@@ -440,11 +440,11 @@ ${skills.map((s) => `${s.name}（${s.category}）`).join('、')}
       {/* ── Usage bar ── */}
       <div className="flex items-center gap-2 flex-wrap bg-cream-50 border border-warm-200 rounded-lg px-4 py-3">
         <span className="text-sm text-ink-500 shrink-0">你的技能將用於：</span>
-        <Link href="/career-match" className="text-sm font-medium text-terra-600 hover:text-terra-800 transition-colors whitespace-nowrap">🎯 職缺匹配 →</Link>
+        <Link href="/jobs" className="text-sm font-medium text-terra-600 hover:text-terra-800 transition-colors whitespace-nowrap">🎯 職缺匹配 →</Link>
         <span className="text-ink-300">·</span>
-        <Link href="/career-growth" className="text-sm font-medium text-terra-600 hover:text-terra-800 transition-colors whitespace-nowrap">◈ Skill Map →</Link>
+        <Link href="/skill-map" className="text-sm font-medium text-terra-600 hover:text-terra-800 transition-colors whitespace-nowrap">◈ Skill Map →</Link>
         <span className="text-ink-300">·</span>
-        <Link href="/interview-prep" className="text-sm font-medium text-terra-600 hover:text-terra-800 transition-colors whitespace-nowrap">🎤 面試準備 →</Link>
+        <Link href="/interviews" className="text-sm font-medium text-terra-600 hover:text-terra-800 transition-colors whitespace-nowrap">🎤 面試準備 →</Link>
       </div>
 
       {/* ── Controls bar ── */}

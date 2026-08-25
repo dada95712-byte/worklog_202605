@@ -8,11 +8,11 @@ import { Sidebar } from './sidebar'
 const BOTTOM_NAV = [
   { href: '/dashboard',            icon: '🏠', label: 'Home' },
   { href: '/profile-library',      icon: '👤', label: '檔案庫' },
-  { href: '/career-profile',       icon: '📄', label: '履歷' },
-  { href: '/career-match',         icon: '🎯', label: '職缺' },
-  { href: '/career-growth',        icon: '🌱', label: '技能' },
-  { href: '/interview-prep',       icon: '💬', label: '面試' },
-  { href: '/career-intelligence',  icon: '📊', label: '分析' },
+  { href: '/resume-lab',       icon: '📄', label: '履歷' },
+  { href: '/jobs',         icon: '🎯', label: '職缺' },
+  { href: '/skill-map',        icon: '🌱', label: '技能' },
+  { href: '/interviews',       icon: '💬', label: '面試' },
+  { href: '/analytics',  icon: '📊', label: '分析' },
 ]
 
 export function AppLayout({ children }: { children: React.ReactNode }) {

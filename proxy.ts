@@ -5,13 +5,13 @@ export const proxy = withAuth
 export const config = {
   matcher: [
     '/dashboard/:path*',
-    '/career-profile/:path*',
+    '/resume-lab/:path*',
     '/work-journal/:path*',
-    '/career-match/:path*',
-    '/career-growth/:path*',
-    '/interview-prep/:path*',
+    '/jobs/:path*',
+    '/skill-map/:path*',
+    '/interviews/:path*',
     '/career-coach/:path*',
-    '/career-intelligence/:path*',
+    '/analytics/:path*',
     '/profile-library/:path*',
   ],
 }

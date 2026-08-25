@@ -2225,7 +2225,7 @@ ${answered.map((q, i) => `題${i + 1}（${TYPE[q.type]?.label}）：${q.question
                     {fromJobId && (
                       saveTrackerStatus === 'saved' ? (
                         <Link
-                          href="/career-match"
+                          href="/jobs"
                           className="flex items-center gap-2 rounded-xl border border-sage-200 bg-sage-50 px-4 py-2.5 text-sm font-medium text-sage-700 hover:bg-sage-100 transition-colors">
                           ✓ 已記錄至 {fromCompany} 的面試準備紀錄 →
                         </Link>

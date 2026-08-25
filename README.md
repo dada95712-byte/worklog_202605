@@ -6,11 +6,15 @@
 
 | 模組 | 路徑 | 功能 |
 |------|------|------|
-| 職涯資料庫 | `/career-profile` | PDF/DOCX 履歷解析、AI 評分、技能標籤、STAR 轉換 |
-| 職缺配對 | `/career-match` | 台灣職缺搜尋、AI 匹配分析、求職 Kanban |
-| 職涯成長 | `/career-growth` | 技能落差分析、學習路徑、AI 教練對話 |
-| 面試準備 | `/interview-prep` | 模擬面試題生成、AI 答案評分、常見題庫 |
-| 職涯情報 | `/career-intelligence` | 薪資行情查詢、產業趨勢、求職儀表板 |
+| 個人檔案庫 | `/profile-library` | 基本資料、學歷、經歷、技能等原始履歷素材管理 |
+| Resume Lab | `/resume-lab` | PDF/DOCX 履歷解析、AI 從檔案庫生成通用/客製化履歷、評分 |
+| 職缺配對 | `/jobs` | 台灣職缺搜尋、JD 比對分析、7 階段 Kanban 追蹤 |
+| 技能庫 | `/dashboard/skills` | 技能新增/分類、AI 推薦與重新分類、日誌技能採用 |
+| Skill Map | `/skill-map` | 技能分類總覽、日誌技能頻率、跨職缺技能落差分析 |
+| Work Journal | `/work-journal` | STAR 格式工作日誌、AI 圖片辨識、面試素材萃取 |
+| 面試準備 | `/interviews` | 模擬面試題生成、AI 答案評分、常見題庫 |
+| AI 職涯教練 | `/career-coach` | 轉職、升職、求職策略問答 |
+| 職涯情報 | `/analytics` | 薪資行情查詢、產業趨勢、求職儀表板 |
 
 ## 技術架構
 
@@ -18,7 +22,7 @@
 - **UI**: Tailwind CSS v4
 - **Auth**: NextAuth.js v4 (Google OAuth + Email)
 - **AI**: OpenRouter（統一入口）— `openrouter/free`（主）/ `meta-llama/llama-3.3-70b-instruct:free`（備援）
-- **DB**: PostgreSQL via Prisma 7（schema ready，MVP 可不設定）
+- **DB**: PostgreSQL via Prisma 7（Neon serverless driver，必填 — 個人檔案／履歷／技能／職缺追蹤／工作日誌皆持久化於此）
 - **Deployment**: Vercel
 
 ## 本地開發
@@ -46,12 +50,11 @@ cp .env.example .env.local
 | `NEXTAUTH_URL` | 部署網址 | `http://localhost:3000`（開發） |
 | `GOOGLE_CLIENT_ID` | Google OAuth | [Google Cloud Console](https://console.cloud.google.com) |
 | `GOOGLE_CLIENT_SECRET` | Google OAuth | 同上 |
-| `DATABASE_URL` | PostgreSQL 連線字串 | Neon.tech 或 Supabase（選填） |
+| `DATABASE_URL` | PostgreSQL 連線字串（必填） | [Neon.tech](https://neon.tech) — 程式碼使用 Neon 專屬的 serverless driver（`@prisma/adapter-neon`），非標準 TCP 連線，暫不支援 Supabase 等其他 provider |
 | `JSEARCH_API_KEY` | 職缺搜尋 API | [RapidAPI JSearch](https://rapidapi.com/letscrape-6bfed1765d1a6/api/jsearch) |
 | `SERPER_API_KEY` | 職缺搜尋備援 | [Serper.dev](https://serper.dev) |
 
-> `OPENROUTER_API_KEY` 和 `NEXTAUTH_SECRET` 是最低限度必填。
-> 不設定 `DATABASE_URL` 可使用（JWT session，不持久化）。
+> `OPENROUTER_API_KEY`、`NEXTAUTH_SECRET`、`DATABASE_URL` 皆為必填，缺 `DATABASE_URL` 會導致個人檔案／履歷／技能／職缺追蹤／工作日誌無法儲存。
 
 ### 3. 啟動開發伺服器
 
@@ -61,13 +64,14 @@ npm run dev
 
 開啟 [http://localhost:3000](http://localhost:3000)
 
-### 4. 資料庫設定（選填）
+### 4. 資料庫設定
 
 ```bash
-# 設定 DATABASE_URL 後執行
-npx prisma migrate dev --name init
-npx prisma generate
+# 設定 DATABASE_URL 後執行，套用所有 migration
+npx prisma migrate deploy
 ```
+
+> `prisma generate` 已透過 `postinstall` 在 `npm install` 後自動執行，不需手動跑。
 
 ## 部署到 Vercel
 

@@ -31,7 +31,7 @@ const navItems = [
     ),
   },
   {
-    href: '/career-profile',
+    href: '/resume-lab',
     label: '履歷',
     icon: (
       <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
@@ -51,7 +51,7 @@ const navItems = [
     ),
   },
   {
-    href: '/career-match',
+    href: '/jobs',
     label: '求職追蹤',
     icon: (
       <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
@@ -60,7 +60,7 @@ const navItems = [
     ),
   },
   {
-    href: '/career-growth',
+    href: '/skill-map',
     label: '技能地圖',
     icon: (
       <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
@@ -69,7 +69,7 @@ const navItems = [
     ),
   },
   {
-    href: '/interview-prep',
+    href: '/interviews',
     label: '面試練習',
     icon: (
       <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
@@ -87,7 +87,7 @@ const navItems = [
     ),
   },
   {
-    href: '/career-intelligence',
+    href: '/analytics',
     label: '職缺分析',
     icon: (
       <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>

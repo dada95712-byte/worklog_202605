@@ -45,77 +45,77 @@ const PIPELINE_ITEMS = [
 ]
 
 const SCORE_BREAKDOWN = [
-  { label: '履歷',     value: 0,  max: 30, color: '#C97941', note: '尚未上傳',   href: '/career-profile' },
+  { label: '履歷',     value: 0,  max: 30, color: '#C97941', note: '尚未上傳',   href: '/resume-lab' },
   { label: '技能庫',   value: 10, max: 20, color: '#7FA887', note: '10 項技能',  href: '/dashboard/skills' },
-  { label: '職缺追蹤', value: 15, max: 25, color: '#D4A25A', note: '4 筆記錄',   href: '/career-match' },
-  { label: '面試練習', value: 0,  max: 25, color: '#B8A090', note: '0 道練習',   href: '/interview-prep' },
+  { label: '職缺追蹤', value: 15, max: 25, color: '#D4A25A', note: '4 筆記錄',   href: '/jobs' },
+  { label: '面試練習', value: 0,  max: 25, color: '#B8A090', note: '0 道練習',   href: '/interviews' },
 ]
 
 const QUICK_LINKS = [
-  { label: '上傳履歷', href: '/career-profile',  symbol: '↑',  bg: '#FBF2EA', border: '#EDD9C8', color: '#C97941' },
-  { label: '技能落差', href: '/career-growth',   symbol: '⚡', bg: '#FBF7ED', border: '#EDE3C8', color: '#B8922A' },
-  { label: '面試練習', href: '/interview-prep',  symbol: '🎤', bg: '#F2F7F3', border: '#D0E3D2', color: '#5E8F68' },
-  { label: '新增職缺', href: '/career-match',    symbol: '＋', bg: '#F3ECE4', border: '#E6DDD2', color: '#8B7B70' },
+  { label: '上傳履歷', href: '/resume-lab',  symbol: '↑',  bg: '#FBF2EA', border: '#EDD9C8', color: '#C97941' },
+  { label: '技能落差', href: '/skill-map',   symbol: '⚡', bg: '#FBF7ED', border: '#EDE3C8', color: '#B8922A' },
+  { label: '面試練習', href: '/interviews',  symbol: '🎤', bg: '#F2F7F3', border: '#D0E3D2', color: '#5E8F68' },
+  { label: '新增職缺', href: '/jobs',    symbol: '＋', bg: '#F3ECE4', border: '#E6DDD2', color: '#8B7B70' },
 ]
 
 // ── Personalized task presets ──────────────────────────────────────────────────
 
 const DEFAULT_TASKS: TaskDef[] = [
-  { id: 'resume',   label: '上傳或完善履歷',  time: '5 分鐘',  desc: 'AI 評分，找出改善方向', href: '/career-profile' },
+  { id: 'resume',   label: '上傳或完善履歷',  time: '5 分鐘',  desc: 'AI 評分，找出改善方向', href: '/resume-lab' },
   { id: 'skills',   label: '更新技能庫',      time: '3 分鐘',  desc: '比對職缺，找出技能落差', href: '/dashboard/skills' },
-  { id: 'practice', label: '練習一道面試題',  time: '10 分鐘', desc: 'AI 即時回饋，提升表達力', href: '/interview-prep' },
+  { id: 'practice', label: '練習一道面試題',  time: '10 分鐘', desc: 'AI 即時回饋，提升表達力', href: '/interviews' },
 ]
 
 const TASK_PRESETS: Record<string, TaskDef[]> = {
   'active_search+resume': [
-    { id: 'upload',  label: '上傳履歷 AI 評分', time: '5 分鐘', desc: 'AI 立即評分，找出改善方向', href: '/career-profile' },
+    { id: 'upload',  label: '上傳履歷 AI 評分', time: '5 分鐘', desc: 'AI 立即評分，找出改善方向', href: '/resume-lab' },
     { id: 'skills',  label: '更新技能庫',        time: '3 分鐘', desc: '確保資料是最新的',         href: '/dashboard/skills' },
-    { id: 'ats',     label: '查看 ATS 報告',     time: '2 分鐘', desc: '了解履歷是否會被過濾',     href: '/career-profile' },
+    { id: 'ats',     label: '查看 ATS 報告',     time: '2 分鐘', desc: '了解履歷是否會被過濾',     href: '/resume-lab' },
   ],
   'active_search+jobs': [
-    { id: 'add_job', label: '新增目標職缺',   time: '5 分鐘', desc: '追蹤求職進度',         href: '/career-match' },
-    { id: 'gap',     label: '技能落差分析',   time: '5 分鐘', desc: '找出需要補強的技能',   href: '/career-growth' },
+    { id: 'add_job', label: '新增目標職缺',   time: '5 分鐘', desc: '追蹤求職進度',         href: '/jobs' },
+    { id: 'gap',     label: '技能落差分析',   time: '5 分鐘', desc: '找出需要補強的技能',   href: '/skill-map' },
     { id: 'skills',  label: '更新技能庫',     time: '3 分鐘', desc: '確保資料是最新的',     href: '/dashboard/skills' },
   ],
   'active_search+interview': [
-    { id: 'practice', label: '練習一道面試題',   time: '10 分鐘', desc: 'AI 即時回饋，提升表達力', href: '/interview-prep' },
-    { id: 'gap',      label: '技能落差分析',     time: '5 分鐘',  desc: '找出需要補強的技能',     href: '/career-growth' },
-    { id: 'add_job',  label: '新增目標職缺',     time: '3 分鐘',  desc: '追蹤求職進度',           href: '/career-match' },
+    { id: 'practice', label: '練習一道面試題',   time: '10 分鐘', desc: 'AI 即時回饋，提升表達力', href: '/interviews' },
+    { id: 'gap',      label: '技能落差分析',     time: '5 分鐘',  desc: '找出需要補強的技能',     href: '/skill-map' },
+    { id: 'add_job',  label: '新增目標職缺',     time: '3 分鐘',  desc: '追蹤求職進度',           href: '/jobs' },
   ],
   'active_search+skills': [
-    { id: 'gap',      label: '技能落差分析', time: '5 分鐘', desc: '找出需要補強的技能', href: '/career-growth' },
+    { id: 'gap',      label: '技能落差分析', time: '5 分鐘', desc: '找出需要補強的技能', href: '/skill-map' },
     { id: 'skills',   label: '更新技能庫',   time: '3 分鐘', desc: '確保資料是最新的',   href: '/dashboard/skills' },
-    { id: 'practice', label: '練習一道面試題', time: '10 分鐘', desc: 'AI 即時回饋', href: '/interview-prep' },
+    { id: 'practice', label: '練習一道面試題', time: '10 分鐘', desc: 'AI 即時回饋', href: '/interviews' },
   ],
   'passive+resume': [
-    { id: 'resume', label: '更新履歷',       time: '5 分鐘', desc: '保持履歷最新狀態',   href: '/career-profile' },
-    { id: 'gap',    label: '技能落差分析', time: '5 分鐘', desc: '找出市場需要什麼', href: '/career-growth' },
-    { id: 'intel',  label: '查看產業趨勢', time: '3 分鐘', desc: '了解當前就業市場', href: '/career-intelligence' },
+    { id: 'resume', label: '更新履歷',       time: '5 分鐘', desc: '保持履歷最新狀態',   href: '/resume-lab' },
+    { id: 'gap',    label: '技能落差分析', time: '5 分鐘', desc: '找出市場需要什麼', href: '/skill-map' },
+    { id: 'intel',  label: '查看產業趨勢', time: '3 分鐘', desc: '了解當前就業市場', href: '/analytics' },
   ],
   'passive+jobs': [
-    { id: 'intel',   label: '查看產業趨勢', time: '3 分鐘', desc: '了解當前就業市場',   href: '/career-intelligence' },
-    { id: 'gap',     label: '技能落差分析', time: '5 分鐘', desc: '找出市場需要什麼',   href: '/career-growth' },
-    { id: 'add_job', label: '新增目標職缺', time: '5 分鐘', desc: '看看有哪些機會',     href: '/career-match' },
+    { id: 'intel',   label: '查看產業趨勢', time: '3 分鐘', desc: '了解當前就業市場',   href: '/analytics' },
+    { id: 'gap',     label: '技能落差分析', time: '5 分鐘', desc: '找出市場需要什麼',   href: '/skill-map' },
+    { id: 'add_job', label: '新增目標職缺', time: '5 分鐘', desc: '看看有哪些機會',     href: '/jobs' },
   ],
   'passive+interview': [
-    { id: 'practice', label: '練習一道面試題', time: '10 分鐘', desc: 'AI 即時回饋', href: '/interview-prep' },
-    { id: 'gap',      label: '技能落差分析',   time: '5 分鐘',  desc: '找出需要補強的技能', href: '/career-growth' },
-    { id: 'resume',   label: '更新履歷',       time: '5 分鐘',  desc: '保持履歷最新狀態', href: '/career-profile' },
+    { id: 'practice', label: '練習一道面試題', time: '10 分鐘', desc: 'AI 即時回饋', href: '/interviews' },
+    { id: 'gap',      label: '技能落差分析',   time: '5 分鐘',  desc: '找出需要補強的技能', href: '/skill-map' },
+    { id: 'resume',   label: '更新履歷',       time: '5 分鐘',  desc: '保持履歷最新狀態', href: '/resume-lab' },
   ],
   'passive+skills': [
-    { id: 'gap',    label: '技能落差分析', time: '5 分鐘', desc: '找出市場需要什麼',   href: '/career-growth' },
+    { id: 'gap',    label: '技能落差分析', time: '5 分鐘', desc: '找出市場需要什麼',   href: '/skill-map' },
     { id: 'skills', label: '更新技能庫',   time: '3 分鐘', desc: '確保資料是最新的',   href: '/dashboard/skills' },
-    { id: 'intel',  label: '查看產業趨勢', time: '3 分鐘', desc: '了解當前就業市場',   href: '/career-intelligence' },
+    { id: 'intel',  label: '查看產業趨勢', time: '3 分鐘', desc: '了解當前就業市場',   href: '/analytics' },
   ],
   'just_started': [
-    { id: 'exp',    label: '更新工作經歷', time: '5 分鐘', desc: '記錄新工作的詳細資訊',    href: '/career-profile' },
-    { id: 'gap',    label: '技能落差分析', time: '5 分鐘', desc: '找出需要學習的技能',      href: '/career-growth' },
-    { id: 'journal',label: '記錄工作成果', time: '3 分鐘', desc: '用 STAR 法則記錄亮點',    href: '/career-intelligence' },
+    { id: 'exp',    label: '更新工作經歷', time: '5 分鐘', desc: '記錄新工作的詳細資訊',    href: '/resume-lab' },
+    { id: 'gap',    label: '技能落差分析', time: '5 分鐘', desc: '找出需要學習的技能',      href: '/skill-map' },
+    { id: 'journal',label: '記錄工作成果', time: '3 分鐘', desc: '用 STAR 法則記錄亮點',    href: '/analytics' },
   ],
   'fresh_grad': [
-    { id: 'build',    label: '建立新鮮人履歷', time: '10 分鐘', desc: '用範本快速建立第一份履歷', href: '/career-profile' },
+    { id: 'build',    label: '建立新鮮人履歷', time: '10 分鐘', desc: '用範本快速建立第一份履歷', href: '/resume-lab' },
     { id: 'skills',   label: '新增技能',        time: '3 分鐘',  desc: '列出你的專業能力',        href: '/dashboard/skills' },
-    { id: 'practice', label: '練習面試',         time: '10 分鐘', desc: 'AI 即時回饋',             href: '/interview-prep' },
+    { id: 'practice', label: '練習面試',         time: '10 分鐘', desc: 'AI 即時回饋',             href: '/interviews' },
   ],
 }
 
@@ -344,8 +344,8 @@ export function DashboardClient({ name }: { name: string }) {
     ? '先上傳一份履歷，AI 會給你具體的改善建議'
     : totalScore < 40 ? '完善技能庫，比對目標職缺的需求'
     : '練習面試題目，提升表達自信'
-  const nextStepHref = totalScore < 10 ? '/career-profile'
-    : totalScore < 40 ? '/dashboard/skills' : '/interview-prep'
+  const nextStepHref = totalScore < 10 ? '/resume-lab'
+    : totalScore < 40 ? '/dashboard/skills' : '/interviews'
 
   return (
     <>
@@ -565,7 +565,7 @@ export function DashboardClient({ name }: { name: string }) {
           <Pane className="lg:col-span-2">
             <div className="flex items-center justify-between mb-4">
               <SectionLabel>求職追蹤</SectionLabel>
-              <Link href="/career-match" className="text-[11px] font-medium -mt-4 transition-opacity hover:opacity-70"
+              <Link href="/jobs" className="text-[11px] font-medium -mt-4 transition-opacity hover:opacity-70"
                 style={{ color: '#C97941' }}>
                 全部 →
               </Link>
@@ -574,7 +574,7 @@ export function DashboardClient({ name }: { name: string }) {
               {PIPELINE_ITEMS.map((item, i) => {
                 const cfg = STATUS_CFG[item.status] ?? STATUS_CFG.saved
                 return (
-                  <Link key={i} href="/career-match"
+                  <Link key={i} href="/jobs"
                     className="flex items-center gap-3 rounded-xl px-3 py-2.5 transition-colors"
                     style={{ background: '#FAF7F4' }}
                     onMouseEnter={e => (e.currentTarget.style.background = '#F3ECE4')}
@@ -593,7 +593,7 @@ export function DashboardClient({ name }: { name: string }) {
                   </Link>
                 )
               })}
-              <Link href="/career-match"
+              <Link href="/jobs"
                 className="flex items-center justify-center gap-1.5 rounded-xl py-2 text-xs font-medium transition-colors mt-1"
                 style={{ background: '#F3ECE4', color: '#9E8E84' }}
                 onMouseEnter={e => (e.currentTarget.style.background = '#EAE0D4')}

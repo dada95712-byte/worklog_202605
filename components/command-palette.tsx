@@ -7,19 +7,19 @@ import { cn } from '@/lib/utils'
 
 const NAV = [
   { label: 'Dashboard',       href: '/dashboard',            icon: '⬡',  shortcut: 'G D' },
-  { label: 'Resume Lab',      href: '/career-profile',       icon: '◈',  shortcut: 'G R' },
-  { label: 'Job Pipeline',    href: '/career-match',         icon: '◎',  shortcut: 'G J' },
-  { label: 'Skill Map',       href: '/career-growth',        icon: '◈',  shortcut: 'G S' },
-  { label: 'Interview Arena', href: '/interview-prep',       icon: '⬟',  shortcut: 'G I' },
-  { label: 'Analytics',       href: '/career-intelligence',  icon: '◉',  shortcut: 'G A' },
+  { label: 'Resume Lab',      href: '/resume-lab',       icon: '◈',  shortcut: 'G R' },
+  { label: 'Job Pipeline',    href: '/jobs',         icon: '◎',  shortcut: 'G J' },
+  { label: 'Skill Map',       href: '/skill-map',        icon: '◈',  shortcut: 'G S' },
+  { label: 'Interview Arena', href: '/interviews',       icon: '⬟',  shortcut: 'G I' },
+  { label: 'Analytics',       href: '/analytics',  icon: '◉',  shortcut: 'G A' },
 ]
 
 const ACTIONS = [
-  { label: '上傳履歷',           href: '/career-profile',       icon: '↑', tag: '履歷' },
-  { label: '模擬面試',           href: '/interview-prep',       icon: '▶', tag: '面試' },
-  { label: '搜尋職缺',           href: '/career-match',         icon: '🔍', tag: '職缺' },
-  { label: '分析技能落差',       href: '/career-growth',        icon: '⚡', tag: '技能' },
-  { label: '查詢薪資行情',       href: '/career-intelligence',  icon: '💰', tag: '薪資' },
+  { label: '上傳履歷',           href: '/resume-lab',       icon: '↑', tag: '履歷' },
+  { label: '模擬面試',           href: '/interviews',       icon: '▶', tag: '面試' },
+  { label: '搜尋職缺',           href: '/jobs',         icon: '🔍', tag: '職缺' },
+  { label: '分析技能落差',       href: '/skill-map',        icon: '⚡', tag: '技能' },
+  { label: '查詢薪資行情',       href: '/analytics',  icon: '💰', tag: '薪資' },
 ]
 
 type Item = { label: string; href: string; icon: string; shortcut?: string; tag?: string }

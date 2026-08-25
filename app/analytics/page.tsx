@@ -476,7 +476,7 @@ export default function CareerIntelligencePage() {
     setTrackerCompany(''); setTrackerJobId(''); setTrackerTitle(''); setTrackerIndustry('')
     setTrackerSalary(null); setDeepReport(null); setDeepReportError('')
     setCachedRecord(null); setViewingRecord(null)
-    if (typeof window !== 'undefined') window.history.replaceState({}, '', '/career-intelligence')
+    if (typeof window !== 'undefined') window.history.replaceState({}, '', '/analytics')
   }
 
   function startManualAnalysis() {
@@ -895,7 +895,7 @@ export default function CareerIntelligencePage() {
                   <p className="text-4xl mb-3">🏢</p>
                   <p className="text-sm text-ink-500">AI 提供薪資行情、產業趨勢、企業文化、面試情報、談薪建議</p>
                   <p className="text-xs text-ink-400 mt-1">也可從 Application Tracker「面試準備」Tab 直接連動</p>
-                  <Link href="/career-match"
+                  <Link href="/jobs"
                     className="mt-3 text-sm text-terra-500 hover:text-terra-700 transition-colors">
                     前往 Application Tracker →
                   </Link>

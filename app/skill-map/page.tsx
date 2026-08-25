@@ -236,7 +236,7 @@ export default function SkillMapPage() {
           <div className="py-10 text-center space-y-2">
             <p className="text-2xl">🎯</p>
             <p className="text-sm text-ink-400">尚無匹配分析資料</p>
-            <Link href="/career-match" className="inline-block mt-1 text-sm text-terra-500 hover:text-terra-700 transition-colors">
+            <Link href="/jobs" className="inline-block mt-1 text-sm text-terra-500 hover:text-terra-700 transition-colors">
               前往 Application Tracker 進行 AI 分析 →
             </Link>
           </div>

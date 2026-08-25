@@ -1233,11 +1233,11 @@ export default function ApplicationTrackerPage() {
                         </div>
                       )}
                       <div className="flex gap-2 flex-wrap">
-                        <a href={`/career-profile`}
+                        <a href={`/resume-lab`}
                           className="rounded-lg border border-warm-200 bg-white px-3 py-1.5 text-xs font-medium text-ink-600 hover:border-terra-300 hover:text-terra-600 transition-all">
                           編輯履歷
                         </a>
-                        <a href={`/career-profile?jobId=${app.id}&company=${encodeURIComponent(app.company)}&title=${encodeURIComponent(app.jobTitle)}`}
+                        <a href={`/resume-lab?jobId=${app.id}&company=${encodeURIComponent(app.company)}&title=${encodeURIComponent(app.jobTitle)}`}
                           className="rounded-lg border border-warm-200 bg-white px-3 py-1.5 text-xs font-medium text-ink-600 hover:border-terra-300 hover:text-terra-600 transition-all">
                           重新生成
                         </a>
@@ -1247,7 +1247,7 @@ export default function ApplicationTrackerPage() {
                 })() : (
                   <div className="space-y-3">
                     <p className="text-sm text-ink-400">尚未為此職缺建立客製化履歷</p>
-                    <a href={`/career-profile?jobId=${app.id}&company=${encodeURIComponent(app.company)}&title=${encodeURIComponent(app.jobTitle)}`}
+                    <a href={`/resume-lab?jobId=${app.id}&company=${encodeURIComponent(app.company)}&title=${encodeURIComponent(app.jobTitle)}`}
                       className="inline-flex items-center gap-1.5 rounded-xl bg-terra-500 px-4 py-2 text-sm font-semibold text-white hover:bg-terra-700 transition-colors shadow-[var(--shadow-warm-sm)]">
                       🎯 針對此職缺建立客製化履歷 →
                     </a>
@@ -1324,10 +1324,10 @@ export default function ApplicationTrackerPage() {
               const hasCompanyAna = hasCompanyAnalysisForJob(app.company)
               const allDone       = hasResume && hasSkillGap && hasInterview && hasCompanyAna
               const items = [
-                { done: hasResume,     label: '建立客製化履歷',   action: !hasResume ? { label: '建立 →', href: `/career-profile?jobId=${app.id}&company=${encodeURIComponent(app.company)}&title=${encodeURIComponent(app.jobTitle)}` } : null },
+                { done: hasResume,     label: '建立客製化履歷',   action: !hasResume ? { label: '建立 →', href: `/resume-lab?jobId=${app.id}&company=${encodeURIComponent(app.company)}&title=${encodeURIComponent(app.jobTitle)}` } : null },
                 { done: hasSkillGap,   label: '分析技能落差',     action: !hasSkillGap ? { label: '查看 JD 分析', onClick: () => setDetailTab('jd') } : null },
-                { done: hasInterview,  label: '面試題目準備',     action: !hasInterview ? { label: '開始練習 →', href: '/interview-prep' } : null },
-                { done: hasCompanyAna, label: '公司深度分析',     action: !hasCompanyAna ? { label: '查看分析 →', href: '/career-intelligence' } : null },
+                { done: hasInterview,  label: '面試題目準備',     action: !hasInterview ? { label: '開始練習 →', href: '/interviews' } : null },
+                { done: hasCompanyAna, label: '公司深度分析',     action: !hasCompanyAna ? { label: '查看分析 →', href: '/analytics' } : null },
               ]
               return allDone ? (
                 <div className="rounded-xl bg-sage-50 border border-sage-200 px-4 py-4 text-center">
@@ -1527,12 +1527,12 @@ export default function ApplicationTrackerPage() {
           <div className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <Link
-                href={`/interview-prep?jobId=${encodeURIComponent(app.id)}&title=${encodeURIComponent(app.jobTitle)}&company=${encodeURIComponent(app.company)}`}
+                href={`/interviews?jobId=${encodeURIComponent(app.id)}&title=${encodeURIComponent(app.jobTitle)}&company=${encodeURIComponent(app.company)}`}
                 className="flex items-center gap-2 rounded-xl border border-warm-200 bg-white px-4 py-3 text-sm font-medium text-ink-700 hover:border-terra-300 hover:bg-terra-50 transition-all">
                 🎤 針對此職缺生成面試題目 →
               </Link>
               <Link
-                href={`/career-intelligence?jobId=${encodeURIComponent(app.id)}&company=${encodeURIComponent(app.company)}&title=${encodeURIComponent(app.jobTitle)}&industry=`}
+                href={`/analytics?jobId=${encodeURIComponent(app.id)}&company=${encodeURIComponent(app.company)}&title=${encodeURIComponent(app.jobTitle)}&industry=`}
                 className="flex items-center gap-2 rounded-xl border border-warm-200 bg-white px-4 py-3 text-sm font-medium text-ink-700 hover:border-terra-300 hover:bg-terra-50 transition-all">
                 🏢 分析此公司 →
               </Link>
