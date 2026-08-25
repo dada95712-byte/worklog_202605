@@ -32,6 +32,8 @@ model User {
   interviewSessions InterviewSession[]
   workJournals      WorkJournal[]
   dailyProgress     DailyProgress[]
+  resumeScores      ResumeScore[]
+  careerAchievements CareerAchievement[]
 
   // Profile sections
   profileBasic        ProfileBasic?
@@ -102,6 +104,28 @@ model Resume {
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
   user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  scores            ResumeScore[]
+}
+
+// AI 評分歷史紀錄 —— 每次評分附完整細項與建議，取最新一筆做常駐顯示
+model ResumeScore {
+  id           String   @id @default(cuid())
+  userId       String
+  resumeId     String
+  scoreOverall Int
+  scoreContent Int
+  scoreAts     Int
+  scoreKeyword Int
+  scoreFormat  Int
+  scoreImpact  Int
+  suggestions  Json?
+  keywords     Json?
+  language     String   @default("zh-TW")
+  createdAt    DateTime @default(now())
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  resume       Resume   @relation(fields: [resumeId], references: [id], onDelete: Cascade)
+
+  @@index([resumeId, createdAt])
 }
 
 model Skill {
@@ -250,6 +274,25 @@ model WorkJournal {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  achievements CareerAchievement[]
+}
+
+// AI 從日誌萃取的量化成就 —— 待確認/已確認狀態追蹤，只有已確認的才進職涯成就總覽
+model CareerAchievement {
+  id             String   @id @default(cuid())
+  userId         String
+  journalId      String?
+  company        String?
+  text           String   @db.Text
+  metric         String?
+  journalExcerpt String?  @db.Text
+  isConfirmed    Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  journal        WorkJournal? @relation(fields: [journalId], references: [id], onDelete: SetNull)
+
+  @@index([userId, isConfirmed])
 }
 
 // ── Profile Section Models ─────────────────────────────────────────────────────

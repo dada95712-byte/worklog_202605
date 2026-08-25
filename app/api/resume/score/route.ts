@@ -2,13 +2,47 @@ import { NextRequest, NextResponse } from 'next/server'
 import { callAI, isRateLimitError } from '@/lib/ai-client'
 import { extractJSON } from '@/lib/extract-json'
 import { requireAuth } from '@/lib/auth-guard'
+import { prisma } from '@/lib/prisma'
+
+// 常駐顯示用：取該履歷最新一筆評分紀錄（含細項與建議），不需重新呼叫 AI
+export async function GET(req: NextRequest) {
+  const { session, error: authError } = await requireAuth()
+  if (authError) return authError
+  const userId = session!.user.id as string
+
+  const resumeId = req.nextUrl.searchParams.get('resumeId')
+  if (!resumeId) return NextResponse.json({ error: '缺少 resumeId' }, { status: 400 })
+
+  const latest = await prisma.resumeScore.findFirst({
+    where: { resumeId, userId },
+    orderBy: { createdAt: 'desc' },
+  })
+  if (!latest) return NextResponse.json({ score: null })
+
+  return NextResponse.json({
+    score: {
+      score: latest.scoreOverall,
+      atsScore: latest.scoreAts,
+      dimensions: {
+        content: latest.scoreContent,
+        keywords: latest.scoreKeyword,
+        format: latest.scoreFormat,
+        impact: latest.scoreImpact,
+      },
+      suggestions: latest.suggestions ?? [],
+      keywords: latest.keywords ?? [],
+      scoredAt: latest.createdAt.toISOString(),
+    },
+  })
+}
 
 export async function POST(req: NextRequest) {
-  const { error: authError } = await requireAuth()
+  const { session, error: authError } = await requireAuth()
   if (authError) return authError
+  const userId = session!.user.id as string
 
   try {
-    const { resumeText, lang } = await req.json()
+    const { resumeText, lang, resumeId } = await req.json()
     if (!resumeText) return NextResponse.json({ error: '缺少履歷內容' }, { status: 400 })
     const isEn = lang === 'en'
 
@@ -65,24 +99,49 @@ ${resumeText.slice(0, 3000)}`
 
     // Normalise + guard
     const dims = (result.dimensions ?? {}) as Record<string, unknown>
-    const suggestions = Array.isArray(result.suggestions) ? result.suggestions : []
+    const rawSuggestions = Array.isArray(result.suggestions) ? result.suggestions : []
+
+    const scoreOverall = Math.min(100, Math.max(0, Number(result.score)    || 0))
+    const scoreAts     = Math.min(100, Math.max(0, Number(result.atsScore) || 0))
+    const dimensions = {
+      content:  Math.min(100, Math.max(0, Number(dims.content)  || 0)),
+      keywords: Math.min(100, Math.max(0, Number(dims.keywords) || 0)),
+      format:   Math.min(100, Math.max(0, Number(dims.format)   || 0)),
+      impact:   Math.min(100, Math.max(0, Number(dims.impact)   || 0)),
+    }
+    const suggestions = rawSuggestions.map((s: { priority?: string; issue?: string; fix?: string; section?: string }) => ({
+      priority: ['high', 'medium', 'low'].includes(s.priority ?? '') ? s.priority : 'medium',
+      issue:   s.issue ?? '',
+      fix:     s.fix   ?? '',
+      section: s.section ?? null,
+    }))
+    const keywords = Array.isArray(result.keywords) ? result.keywords : []
+
+    // 若帶有 resumeId 且該履歷確實屬於此使用者，落地存一筆評分紀錄
+    if (resumeId) {
+      const owns = await prisma.resume.findFirst({ where: { id: resumeId, userId }, select: { id: true } })
+      if (owns) {
+        await prisma.resumeScore.create({
+          data: {
+            userId, resumeId,
+            scoreOverall, scoreAts,
+            scoreContent: dimensions.content,
+            scoreKeyword: dimensions.keywords,
+            scoreFormat:  dimensions.format,
+            scoreImpact:  dimensions.impact,
+            suggestions, keywords,
+            language: isEn ? 'en' : 'zh-TW',
+          },
+        })
+      }
+    }
 
     return NextResponse.json({
-      score:      Math.min(100, Math.max(0, Number(result.score)    || 0)),
-      atsScore:   Math.min(100, Math.max(0, Number(result.atsScore) || 0)),
-      dimensions: {
-        content:  Math.min(100, Math.max(0, Number(dims.content)  || 0)),
-        keywords: Math.min(100, Math.max(0, Number(dims.keywords) || 0)),
-        format:   Math.min(100, Math.max(0, Number(dims.format)   || 0)),
-        impact:   Math.min(100, Math.max(0, Number(dims.impact)   || 0)),
-      },
-      suggestions: suggestions.map((s: { priority?: string; issue?: string; fix?: string; section?: string }) => ({
-        priority: ['high', 'medium', 'low'].includes(s.priority ?? '') ? s.priority : 'medium',
-        issue:   s.issue ?? '',
-        fix:     s.fix   ?? '',
-        section: s.section ?? null,
-      })),
-      keywords: Array.isArray(result.keywords) ? result.keywords : [],
+      score: scoreOverall,
+      atsScore: scoreAts,
+      dimensions,
+      suggestions,
+      keywords,
     })
   } catch (err) {
     if (isRateLimitError(err)) {

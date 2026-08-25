@@ -970,6 +970,7 @@ export default function CareerProfilePage() {
             <ResumeEditor
               initialData={editedResume as SavedResumeData}
               initialName={resumeName}
+              resumeId={editingResumeId ?? undefined}
               onSave={(data, name) => {
                 const now = new Date().toISOString()
                 const existing = resumes.find((r) => r.id === editingResumeId)

@@ -78,6 +78,7 @@ interface ResumeEditorProps {
   onSave: (data: SavedResumeData, name: string) => void
   onBack: () => void
   onScoreUpdate?: (score: number, atsScore: number, scoredAt: string) => void
+  resumeId?: string
 }
 
 interface ScoreSuggestion {
@@ -497,7 +498,7 @@ function SortableCertRow({ cert, onUpdate, onRemove }: { cert: ResCert; onUpdate
 
 const A4_WIDTH = 794
 
-export function ResumeEditor({ initialData, initialName, onSave, onBack, onScoreUpdate }: ResumeEditorProps) {
+export function ResumeEditor({ initialData, initialName, onSave, onBack, onScoreUpdate, resumeId }: ResumeEditorProps) {
   const [resume, setResume]           = useState<ResData>(() => fromSaved(initialData))
   const [resumeName, setResumeName]   = useState(initialName)
   const [editingName, setEditingName] = useState(false)
@@ -545,6 +546,21 @@ export function ResumeEditor({ initialData, initialName, onSave, onBack, onScore
   }, [fullPreview])
 
   useEffect(() => { if (editingName) nameInputRef.current?.focus() }, [editingName])
+
+  // Feature 4: 常駐顯示上次評分結果 —— 開啟已存在的履歷時，直接讀取上次存的評分細項，不需重新呼叫 AI
+  useEffect(() => {
+    if (!resumeId) return
+    let cancelled = false
+    fetch(`/api/resume/score?resumeId=${encodeURIComponent(resumeId)}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (cancelled || !data?.score) return
+        setScoreResult(data.score as ScoreReport)
+        setShowScorePanel(true)
+      })
+      .catch(() => { /* silent — no persisted score yet */ })
+    return () => { cancelled = true }
+  }, [resumeId])
 
   // Feature 1: auto-save debounce
   useEffect(() => {
@@ -726,7 +742,7 @@ export function ResumeEditor({ initialData, initialName, onSave, onBack, onScore
     try {
       const res = await fetch('/api/resume/score', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ resumeText: toSaved(resume).rawText, lang: resume.lang }),
+        body: JSON.stringify({ resumeText: toSaved(resume).rawText, lang: resume.lang, resumeId }),
       })
       const data = await res.json()
       if (data.error === 'rate_limit') { setRateLimitToast(true); return }

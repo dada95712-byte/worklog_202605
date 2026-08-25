@@ -7,6 +7,17 @@ import { PageTooltip } from '@/components/onboarding/page-tooltip'
 
 interface JournalImage { url: string; aiDescription?: string; uploadedAt: string }
 
+interface CareerAchievementItem {
+  id: string
+  journalId: string | null
+  company: string | null
+  text: string
+  metric: string | null
+  journalExcerpt: string | null
+  isConfirmed: boolean
+  createdAt: string
+}
+
 interface JournalEntry {
   id: string
   title: string
@@ -171,6 +182,12 @@ export default function WorkJournalPage() {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [detailEntry, setDetailEntry] = useState<JournalEntry | null>(null)
 
+  // AI 萃取成就（待確認/已確認）
+  const [achievements, setAchievements] = useState<CareerAchievementItem[]>([])
+  const [achievementsLoading, setAchievementsLoading] = useState(false)
+  const [extracting, setExtracting] = useState(false)
+  const [confirmingId, setConfirmingId] = useState<string | null>(null)
+
   // Search / filter / sort
   const [search, setSearch] = useState('')
   const [sortBy, setSortBy] = useState<'date-desc' | 'date-asc' | 'company'>('date-desc')
@@ -241,6 +258,52 @@ export default function WorkJournalPage() {
       } catch { /* ignore */ }
     })()
   }, [])
+
+  // 進到「成就總覽」分頁時才載入 AI 萃取的成就清單
+  useEffect(() => {
+    if (mainTab !== 'achievements') return
+    setAchievementsLoading(true)
+    fetch('/api/journals/achievements')
+      .then((res) => res.json())
+      .then((data) => setAchievements(data.achievements ?? []))
+      .catch(() => { /* keep whatever was already loaded */ })
+      .finally(() => setAchievementsLoading(false))
+  }, [mainTab])
+
+  async function handleExtractAchievements() {
+    if (entries.length === 0) return
+    setExtracting(true)
+    try {
+      const res = await fetch('/api/journals/extract-achievements', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ journals: entries.map((e) => ({
+          id: e.id, title: e.title, content: e.content,
+          situation: e.situation, task: e.task, action: e.action, result: e.result,
+        })) }),
+      })
+      const data = await res.json()
+      if (data.error) return
+      // 重新整理清單，帶出新萃取（含這次沒有新內容時原本已存在的）成就
+      const listRes = await fetch('/api/journals/achievements')
+      const listData = await listRes.json()
+      setAchievements(listData.achievements ?? [])
+    } catch { /* silent */ }
+    finally { setExtracting(false) }
+  }
+
+  async function handleConfirmAchievement(id: string) {
+    setConfirmingId(id)
+    try {
+      const res = await fetch('/api/journals/achievements', {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, isConfirmed: true }),
+      })
+      if (res.ok) {
+        setAchievements((prev) => prev.map((a) => a.id === id ? { ...a, isConfirmed: true } : a))
+      }
+    } catch { /* silent */ }
+    finally { setConfirmingId(null) }
+  }
 
   // ── Core handlers ─────────────────────────────────────────────────────────
 
@@ -1014,6 +1077,59 @@ export default function WorkJournalPage() {
                 <p className="text-xs mt-0.5 opacity-70">{s.label}</p>
               </div>
             ))}
+          </div>
+
+          {/* AI 萃取成就 —— 待確認/已確認 */}
+          <div className="rounded-xl border border-warm-200 bg-white p-4 space-y-3">
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-xs font-semibold text-ink-700">🤖 AI 萃取的量化成就</p>
+              <button
+                onClick={handleExtractAchievements}
+                disabled={extracting || entries.length === 0}
+                className="rounded-full bg-terra-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-terra-600 disabled:opacity-50 transition-colors"
+              >
+                {extracting ? '萃取中…' : '從日誌萃取成就'}
+              </button>
+            </div>
+
+            {achievementsLoading ? (
+              <p className="text-xs text-ink-400 py-4 text-center">載入中…</p>
+            ) : achievements.length === 0 ? (
+              <p className="text-xs text-ink-400 py-4 text-center">還沒有萃取過成就，點右上角按鈕從日誌自動找出可量化的成就。</p>
+            ) : (
+              <>
+                {achievements.some((a) => !a.isConfirmed) && (
+                  <div className="space-y-2">
+                    <p className="text-[11px] font-medium text-honey-700">⚠️ 待確認</p>
+                    {achievements.filter((a) => !a.isConfirmed).map((a) => (
+                      <div key={a.id} className="rounded-lg border border-honey-200 bg-honey-50 p-3 space-y-1.5">
+                        <p className="text-sm text-ink-800">{a.text}{a.metric && <span className="ml-1 font-semibold text-terra-600">（{a.metric}）</span>}</p>
+                        {a.company && <p className="text-[11px] text-ink-400">📌 {a.company}</p>}
+                        <button
+                          onClick={() => handleConfirmAchievement(a.id)}
+                          disabled={confirmingId === a.id}
+                          className="rounded-full border border-terra-300 bg-white px-2.5 py-1 text-[11px] font-medium text-terra-600 hover:bg-terra-50 disabled:opacity-50 transition-colors"
+                        >
+                          {confirmingId === a.id ? '確認中…' : '✓ 確認正確'}
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {achievements.some((a) => a.isConfirmed) && (
+                  <div className="space-y-2">
+                    <p className="text-[11px] font-medium text-sage-700">✓ 已確認（職涯成就總覽）</p>
+                    {achievements.filter((a) => a.isConfirmed).map((a) => (
+                      <div key={a.id} className="rounded-lg border border-sage-200 bg-sage-50 p-3">
+                        <p className="text-sm text-ink-800">{a.text}{a.metric && <span className="ml-1 font-semibold text-terra-600">（{a.metric}）</span>}</p>
+                        {a.company && <p className="text-[11px] text-ink-400 mt-0.5">📌 {a.company}</p>}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
           </div>
 
           {/* Top tags */}

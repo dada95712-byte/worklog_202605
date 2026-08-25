@@ -2,6 +2,7 @@ import { callAI, isRateLimitError } from '@/lib/ai-client'
 import { NextResponse } from 'next/server'
 import { extractJSON } from '@/lib/extract-json'
 import { requireAuth } from '@/lib/auth-guard'
+import { prisma } from '@/lib/prisma'
 
 interface Journal {
   id: string
@@ -55,8 +56,9 @@ function validateAchievements(
 }
 
 export async function POST(req: Request) {
-  const { error: authError } = await requireAuth()
+  const { session, error: authError } = await requireAuth()
   if (authError) return authError
+  const userId = session!.user.id as string
 
   try {
     const { journals } = await req.json() as { journals: Journal[] }
@@ -81,6 +83,37 @@ export async function POST(req: Request) {
 
     const validated = validateAchievements(rawAchievements, journalMap)
     const removed = rawAchievements.length - validated.length
+
+    // 落地存成「待確認」成就 —— 只信任真的屬於這位使用者的日誌，並比對逐字摘錄避免重複寫入
+    const journalIds = [...new Set(validated.map((a) => a.journalId))]
+    const ownedJournals = await prisma.workJournal.findMany({
+      where: { id: { in: journalIds }, userId },
+      select: { id: true, company: true },
+    })
+    const ownedMap = new Map(ownedJournals.map((j) => [j.id, j.company]))
+
+    const persistable = validated.filter((a) => ownedMap.has(a.journalId))
+    if (persistable.length > 0) {
+      const existing = await prisma.careerAchievement.findMany({
+        where: { userId, journalId: { in: journalIds } },
+        select: { journalId: true, text: true },
+      })
+      const existingKeys = new Set(existing.map((e) => `${e.journalId}::${e.text}`))
+
+      const toCreate = persistable.filter((a) => !existingKeys.has(`${a.journalId}::${a.text}`))
+      if (toCreate.length > 0) {
+        await prisma.careerAchievement.createMany({
+          data: toCreate.map((a) => ({
+            userId,
+            journalId: a.journalId,
+            company: ownedMap.get(a.journalId) ?? null,
+            text: a.text,
+            metric: a.metric ?? null,
+            journalExcerpt: journalMap.get(a.journalId)?.slice(0, 2000) ?? null,
+          })),
+        })
+      }
+    }
 
     return NextResponse.json({ achievements: validated, removed })
   } catch (err) {
