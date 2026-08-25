@@ -119,6 +119,37 @@ const TASK_PRESETS: Record<string, TaskDef[]> = {
   ],
 }
 
+// 承接 /onboarding（登入前）寫的舊格式，換算成這裡看得懂的 status/goal，
+// 避免使用者在 /onboarding 填過一次之後，進 Dashboard 又被 WelcomeModal 重問一次。
+const STAGE_TO_STATUS: Record<string, string> = {
+  student: 'fresh_grad',
+  fresh: 'fresh_grad',
+  employed: 'passive',
+  unemployed: 'active_search',
+}
+const GOAL_TO_MODAL_GOAL: Record<string, string> = {
+  new_job: 'jobs',
+  switch: 'skills',
+  upskill: 'skills',
+  interview: 'interview',
+}
+
+function readLegacyOnboarding(): { status: string; goal: string; targetRole?: string } | null {
+  try {
+    const raw = localStorage.getItem('onboarding')
+    if (!raw) return null
+    const parsed = JSON.parse(raw) as { goal?: string; stage?: string; targetRole?: string }
+    const status = STAGE_TO_STATUS[parsed.stage ?? '']
+    const goal = GOAL_TO_MODAL_GOAL[parsed.goal ?? '']
+    if (!status || !goal) return null
+    // 在職 + 想找新工作/轉職 其實已經是在積極求職了，不是單純被動觀望
+    const active = parsed.stage === 'employed' && (parsed.goal === 'new_job' || parsed.goal === 'switch')
+    return { status: active ? 'active_search' : status, goal, targetRole: parsed.targetRole }
+  } catch {
+    return null
+  }
+}
+
 function getPersonalizedTasks(status: string | null, goal: string | null): TaskDef[] {
   if (!status) return DEFAULT_TASKS
   if (status === 'just_started') return TASK_PRESETS['just_started']
@@ -260,7 +291,17 @@ export function DashboardClient({ name }: { name: string }) {
 
     const completed = localStorage.getItem('onboarding_completed')
     if (!completed) {
-      setShowModal(true)
+      const legacy = readLegacyOnboarding()
+      if (legacy) {
+        localStorage.setItem('onboarding_completed', 'true')
+        localStorage.setItem('onboarding_status', legacy.status)
+        localStorage.setItem('onboarding_goal', legacy.goal)
+        if (legacy.targetRole) localStorage.setItem('onboarding_target_role', legacy.targetRole)
+        setOnbStatus(legacy.status)
+        setOnbGoal(legacy.goal)
+      } else {
+        setShowModal(true)
+      }
     } else {
       setOnbStatus(localStorage.getItem('onboarding_status'))
       setOnbGoal(localStorage.getItem('onboarding_goal'))
