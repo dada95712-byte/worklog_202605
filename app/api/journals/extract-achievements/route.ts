@@ -1,6 +1,7 @@
 import { callAI, isRateLimitError } from '@/lib/ai-client'
 import { NextResponse } from 'next/server'
 import { extractJSON } from '@/lib/extract-json'
+import { requireAuth } from '@/lib/auth-guard'
 
 interface Journal {
   id: string
@@ -54,6 +55,9 @@ function validateAchievements(
 }
 
 export async function POST(req: Request) {
+  const { error: authError } = await requireAuth()
+  if (authError) return authError
+
   try {
     const { journals } = await req.json() as { journals: Journal[] }
     if (!Array.isArray(journals) || journals.length === 0)

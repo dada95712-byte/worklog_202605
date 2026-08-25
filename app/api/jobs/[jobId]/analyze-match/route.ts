@@ -1,11 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { callAI, isRateLimitError } from '@/lib/ai-client'
 import { extractJSON } from '@/lib/extract-json'
+import { requireAuth } from '@/lib/auth-guard'
 
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ jobId: string }> }
 ) {
+  const { error: authError } = await requireAuth()
+  if (authError) return authError
+
   try {
     await params // consume route params (jobId available for future DB writes)
     const { jdContent, userSkills } = await req.json()

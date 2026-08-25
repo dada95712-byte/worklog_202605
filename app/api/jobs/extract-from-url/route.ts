@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { callAI, isRateLimitError } from '@/lib/ai-client'
 import { extractJSON } from '@/lib/extract-json'
 import * as cheerio from 'cheerio'
+import { requireAuth } from '@/lib/auth-guard'
 
 function detectPlatform(url: string): string {
   if (url.includes('104.com.tw'))  return '104'
@@ -13,6 +14,9 @@ function detectPlatform(url: string): string {
 }
 
 export async function POST(req: NextRequest) {
+  const { error: authError } = await requireAuth()
+  if (authError) return authError
+
   try {
     const { url } = await req.json()
 

@@ -1,10 +1,14 @@
 import { callAI } from '@/lib/ai-client'
 import { NextResponse } from 'next/server'
 import { extractJSON } from '@/lib/extract-json'
+import { requireAuth } from '@/lib/auth-guard'
 
 const CATEGORIES = ['問題解決', '領導力', '跨部門協作', '技術實作', '客戶關係', '數據分析']
 
 export async function POST(req: Request) {
+  const { error: authError } = await requireAuth()
+  if (authError) return authError
+
   try {
     const { text } = await req.json()
     if (!text?.trim()) return NextResponse.json({ tags: [], title: '' })

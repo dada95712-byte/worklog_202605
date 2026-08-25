@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { callAI } from '@/lib/ai-client'
 import { extractJSON } from '@/lib/extract-json'
+import { requireAuth } from '@/lib/auth-guard'
 
 async function parsePDF(buffer: Buffer): Promise<string> {
   const PDFParser = (await import('pdf2json')).default
@@ -25,6 +26,9 @@ async function parseDOCX(buffer: Buffer): Promise<string> {
 }
 
 export async function POST(req: NextRequest) {
+  const { error: authError } = await requireAuth()
+  if (authError) return authError
+
   try {
     const formData = await req.formData()
     const file = formData.get('file') as File | null

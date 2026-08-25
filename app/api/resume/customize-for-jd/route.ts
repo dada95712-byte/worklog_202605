@@ -3,10 +3,14 @@ import { NextResponse } from 'next/server'
 import { extractJSON } from '@/lib/extract-json'
 import { validateResumeContent } from '@/lib/resume-validator'
 import { validateAIJsonResponse } from '@/lib/ai-response-validator'
+import { requireAuth } from '@/lib/auth-guard'
 
 const RESUME_JSON_SCHEMA = `{"jobTitle":"","name":"","email":"","phone":"","location":"","linkedin":"","website":"","summary":"","skills":[],"experiences":[{"company":"","title":"","description":"","startDate":"","endDate":"","current":false}],"education":[{"school":"","degree":"","major":"","year":"","startDate":"","endDate":""}],"languages":[{"name":"","level":""}],"certifications":[{"name":"","issuer":"","issueDate":"","expiryDate":"","neverExpires":false,"credentialId":"","credentialUrl":""}],"conferences":[{"name":"","organizer":"","date":"","role":"","description":""}],"activities":[{"name":"","organization":"","date":"","role":"","description":""}],"rawText":""}`
 
 export async function POST(req: Request) {
+  const { error: authError } = await requireAuth()
+  if (authError) return authError
+
   try {
     const { profile, jd, language } = await req.json() as {
       profile: Record<string, unknown>

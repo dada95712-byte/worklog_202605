@@ -1,7 +1,11 @@
 import { NextResponse } from 'next/server'
 import { callAI } from '@/lib/ai-client'
+import { requireAuth } from '@/lib/auth-guard'
 
 export async function POST(req: Request) {
+  const { error: authError } = await requireAuth()
+  if (authError) return authError
+
   try {
     const { name, jobTitle, skills, experiences, lang } = await req.json()
     const isEn = lang === 'en'

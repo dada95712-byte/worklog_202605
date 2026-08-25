@@ -1,6 +1,7 @@
 import { callAI, isRateLimitError } from '@/lib/ai-client'
 import { NextResponse } from 'next/server'
 import { extractJSON } from '@/lib/extract-json'
+import { requireAuth } from '@/lib/auth-guard'
 
 const SYSTEM_PROMPT = `你是技能擷取工具。你的任務是從日誌原文中找出明確提及的技能詞彙。
 規則：
@@ -11,6 +12,9 @@ const SYSTEM_PROMPT = `你是技能擷取工具。你的任務是從日誌原文
 {"skills": [{"name": "技能名稱", "category": "分類", "journal_ids": ["id1","id2"]}]}`
 
 export async function POST(req: Request) {
+  const { error: authError } = await requireAuth()
+  if (authError) return authError
+
   try {
     const { journals } = await req.json() as {
       journals: Array<{ id: string; title: string; content?: string; situation?: string; task?: string; action?: string; result?: string }>

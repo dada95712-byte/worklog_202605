@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { callAIChat } from '@/lib/ai-client'
+import { requireAuth } from '@/lib/auth-guard'
 
 export async function POST(req: NextRequest) {
+  const { error: authError } = await requireAuth()
+  if (authError) return authError
+
   try {
     const { messages, context } = await req.json()
     if (!messages || !Array.isArray(messages)) {

@@ -1,7 +1,11 @@
 import { put } from '@vercel/blob'
 import { NextResponse } from 'next/server'
+import { requireAuth } from '@/lib/auth-guard'
 
 export async function POST(req: Request) {
+  const { error: authError } = await requireAuth()
+  if (authError) return authError
+
   try {
     const form = await req.formData()
     const file = form.get('file') as File | null

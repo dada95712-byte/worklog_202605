@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { callAI } from '@/lib/ai-client'
 import { extractJSON } from '@/lib/extract-json'
+import { requireAuth } from '@/lib/auth-guard'
 
 export async function POST(req: NextRequest) {
+  const { error: authError } = await requireAuth()
+  if (authError) return authError
+
   try {
     const { jdText, userSkills } = await req.json()
     if (!jdText) return NextResponse.json({ error: '缺少職缺描述' }, { status: 400 })

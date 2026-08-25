@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { extractJSON } from '@/lib/extract-json'
 import { isRateLimitError } from '@/lib/ai-client'
+import { requireAuth } from '@/lib/auth-guard'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -96,6 +97,9 @@ async function fetchSalaryStructured(title: string): Promise<SourcedText | null>
 // ── Route handler ─────────────────────────────────────────────────────────────
 
 export async function POST(req: NextRequest) {
+  const { error: authError } = await requireAuth()
+  if (authError) return authError
+
   try {
     const { company, title, jd_content } = await req.json()
     if (!company) return NextResponse.json({ error: '請輸入公司名稱' }, { status: 400 })

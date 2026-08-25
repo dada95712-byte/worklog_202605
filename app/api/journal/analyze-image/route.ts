@@ -1,8 +1,12 @@
 import OpenAI from 'openai'
 import { NextResponse } from 'next/server'
 import { VISION_MODEL } from '@/lib/ai-client'
+import { requireAuth } from '@/lib/auth-guard'
 
 export async function POST(req: Request) {
+  const { error: authError } = await requireAuth()
+  if (authError) return authError
+
   try {
     const { imageUrl } = await req.json()
     if (!imageUrl) return NextResponse.json({ description: '' }, { status: 400 })

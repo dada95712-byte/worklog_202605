@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { callAI } from '@/lib/ai-client'
 import { extractJSON } from '@/lib/extract-json'
+import { requireAuth } from '@/lib/auth-guard'
 
 export async function GET(req: NextRequest) {
+  const { error: authError } = await requireAuth()
+  if (authError) return authError
+
   const { searchParams } = new URL(req.url)
   const role = searchParams.get('role') ?? ''
   const experience = searchParams.get('experience') ?? '3年'

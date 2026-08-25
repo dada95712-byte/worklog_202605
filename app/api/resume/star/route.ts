@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { callAI } from '@/lib/ai-client'
+import { requireAuth } from '@/lib/auth-guard'
 
 export async function POST(req: NextRequest) {
+  const { error: authError } = await requireAuth()
+  if (authError) return authError
+
   try {
     const { journalText } = await req.json()
     if (!journalText) return NextResponse.json({ error: '缺少日誌內容' }, { status: 400 })

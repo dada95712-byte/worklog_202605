@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { callAI, isRateLimitError } from '@/lib/ai-client'
 import { extractJSON } from '@/lib/extract-json'
+import { requireAuth } from '@/lib/auth-guard'
 
 export async function POST(req: NextRequest) {
+  const { error: authError } = await requireAuth()
+  if (authError) return authError
+
   try {
     const { original_content, title, company } = await req.json()
     if (!original_content) return NextResponse.json({ error: '缺少工作描述內容' }, { status: 400 })

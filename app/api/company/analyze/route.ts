@@ -1,8 +1,12 @@
 import { NextResponse } from 'next/server'
 import { callAI } from '@/lib/ai-client'
 import { extractJSON } from '@/lib/extract-json'
+import { requireAuth } from '@/lib/auth-guard'
 
 export async function POST(req: Request) {
+  const { error: authError } = await requireAuth()
+  if (authError) return authError
+
   try {
     const { company } = await req.json()
     if (!company?.trim()) return NextResponse.json({ error: '請輸入公司名稱' }, { status: 400 })

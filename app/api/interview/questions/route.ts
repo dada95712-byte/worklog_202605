@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { callAI } from '@/lib/ai-client'
 import { extractJSON } from '@/lib/extract-json'
+import { requireAuth } from '@/lib/auth-guard'
 
 const BREAKDOWN: Record<number, { behavioral: number; situational: number; technical: number; general: number }> = {
   10: { behavioral: 3, situational: 3, technical: 2, general: 2 },
@@ -61,6 +62,9 @@ const SCENARIO_RULES: Record<string, string> = {
 }
 
 export async function POST(req: NextRequest) {
+  const { error: authError } = await requireAuth()
+  if (authError) return authError
+
   try {
     const { role, company, questionCount = 15, jdContent, scenario = 'general' } = await req.json()
     if (!role) return NextResponse.json({ error: '請輸入目標職位' }, { status: 400 })

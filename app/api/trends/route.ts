@@ -1,8 +1,12 @@
 import { NextResponse } from 'next/server'
 import { callAI } from '@/lib/ai-client'
 import { extractJSON } from '@/lib/extract-json'
+import { requireAuth } from '@/lib/auth-guard'
 
 export async function GET() {
+  const { error: authError } = await requireAuth()
+  if (authError) return authError
+
   try {
     const prompt = `你是台灣職場趨勢分析師，請分析目前（2026年）台灣各主要產業的招募趨勢，以 JSON 格式回傳：
 {
