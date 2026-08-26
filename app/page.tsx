@@ -72,7 +72,7 @@ export default function LandingPage() {
             <br />
             <span className="text-terra-500">變成下一次機會</span>
           </h1>
-          <p className="mb-10 text-base text-ink-400 max-w-lg mx-auto leading-relaxed">
+          <p className="mb-10 text-base text-ink-400 max-w-xl mx-auto leading-relaxed">
             記錄你每天的工作成果，AI 自動整理成你的技能庫、履歷素材與面試故事。<br className="hidden sm:block"/>
             需要求職時，你已經準備好了。
           </p>
