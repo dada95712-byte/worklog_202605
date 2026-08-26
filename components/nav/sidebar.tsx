@@ -248,7 +248,7 @@ export function Sidebar({ mobileDrawer = false }: { mobileDrawer?: boolean }) {
             {!collapsed && (
               <div className="min-w-0">
                 <p className="text-sm font-semibold text-ink-900 tracking-tight leading-none">WorkLog</p>
-                <p className="text-[10px] text-ink-300 mt-0.5">求職工具・工作記錄・面試準備</p>
+                <p className="text-[10px] text-ink-300 mt-0.5">工作記錄・職涯累積・求職準備</p>
               </div>
             )}
           </div>

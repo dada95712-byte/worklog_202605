@@ -60,7 +60,7 @@ function SignInForm() {
             W
           </div>
           <h1 className="text-xl font-bold text-ink-900">WorkLog</h1>
-          <p className="mt-1 text-sm text-ink-400">求職工具・工作記錄・面試準備</p>
+          <p className="mt-1 text-sm text-ink-400">工作記錄・職涯累積・求職準備</p>
         </div>
 
         <div className="rounded-2xl border border-warm-200 bg-white p-6 md:p-8"

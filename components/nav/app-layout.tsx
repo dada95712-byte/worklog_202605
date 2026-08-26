@@ -56,7 +56,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-terra-500 text-white text-[11px] font-bold">W</div>
             <div>
               <p className="text-sm font-semibold text-ink-900 leading-none">WorkLog</p>
-              <p className="text-[10px] text-ink-300 mt-0.5">求職工具・工作記錄</p>
+              <p className="text-[10px] text-ink-300 mt-0.5">工作記錄・職涯累積</p>
             </div>
           </div>
           <button
