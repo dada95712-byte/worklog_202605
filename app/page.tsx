@@ -99,7 +99,7 @@ export default function LandingPage() {
           {LAYERS.map((layer, i) => (
             <div key={layer.layer}>
               <div className="mb-1 flex items-center justify-center gap-2">
-                <span className="text-xs font-bold tracking-[0.2em] text-terra-500">{layer.layer}</span>
+                <span className="text-base font-bold tracking-[0.2em] text-terra-500">{layer.layer}</span>
               </div>
               <p className="mb-5 text-center text-sm text-ink-400 max-w-xl mx-auto leading-relaxed">{layer.desc}</p>
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
