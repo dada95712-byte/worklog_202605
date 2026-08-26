@@ -58,7 +58,7 @@ export default function LandingPage() {
           <div className="flex items-center gap-3">
             <Link href="/auth/signin" className="text-sm text-ink-400 hover:text-ink-700 transition-colors">登入</Link>
             <Link href="/onboarding" className="rounded-lg bg-terra-500 px-4 py-1.5 text-sm font-semibold text-white hover:bg-terra-700 transition-colors shadow-[var(--shadow-warm-sm)]">
-              免費開始
+              開始使用
             </Link>
           </div>
         </div>
@@ -80,7 +80,7 @@ export default function LandingPage() {
           <div className="flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
             <Link href="/onboarding"
               className="w-full sm:w-auto rounded-xl bg-terra-500 px-8 py-3.5 text-base font-semibold text-white hover:bg-terra-700 transition-colors shadow-[var(--shadow-warm-md)]">
-              免費開始使用 →
+              開始使用 →
             </Link>
             <Link href="/dashboard"
               className="w-full sm:w-auto rounded-xl border border-warm-300 bg-white px-8 py-3.5 text-base font-semibold text-ink-600 hover:bg-cream-200 hover:border-warm-400 transition-all shadow-[var(--shadow-warm-xs)]">
