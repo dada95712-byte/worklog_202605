@@ -11,7 +11,17 @@ import { PageTooltip } from '@/components/onboarding/page-tooltip'
 
 const SKILL_CATEGORIES = ['專業技能', '工具與軟體', '核心職能', '軟實力', '語言能力', '證照與認證', '學習中'] as const
 type SkillCategory = typeof SKILL_CATEGORIES[number]
-interface TaggedSkill { name: string; category: SkillCategory }
+interface SkillEvidenceOut { journalId: string; journalTitle: string; excerpt: string }
+interface TaggedSkill {
+  name: string
+  category: SkillCategory
+  id?: string
+  source?: 'manual' | 'verbatim' | 'evidence' | 'inference'
+  isManual?: boolean
+  isConfirmed?: boolean
+  evidenceCount?: number
+  evidence?: SkillEvidenceOut[]
+}
 
 const CAT_DOT: Record<SkillCategory, string> = {
   '專業技能':   'bg-terra-400',
@@ -33,11 +43,11 @@ const CAT_GUIDE: Record<SkillCategory, { emoji: string; desc: string; examples: 
   '學習中':     { emoji: '⚪', desc: '正在培養、尚未精通的技能',       examples: 'Rust、機器學習、韓文' },
 }
 
-interface JournalSkill {
-  name: string
-  category: SkillCategory
-  journal_ids: string[]
-  journalFrequency: number
+const SOURCE_BADGE: Record<NonNullable<TaggedSkill['source']>, { icon: string; label: string }> = {
+  manual:    { icon: '',   label: '' },
+  verbatim:  { icon: '🟢', label: '已驗證' },
+  evidence:  { icon: '🟢', label: '已驗證' },
+  inference: { icon: '🟡', label: 'AI 推論' },
 }
 
 function Spinner({ className = 'h-4 w-4' }: { className?: string }) {
@@ -111,6 +121,11 @@ function SkillChip({
       onTouchMove={clearLongPress}
     >
       <span>{skill.name}</span>
+      {skill.source && skill.source !== 'manual' && (
+        <span title={`${SOURCE_BADGE[skill.source].label}（${skill.evidenceCount ?? 0} 篇日誌）`} className="text-[10px]">
+          {SOURCE_BADGE[skill.source].icon}
+        </span>
+      )}
       {isEditingCat ? (
         <select
           autoFocus
@@ -160,9 +175,11 @@ export default function SkillsPage() {
   const [aiReclassifying, setAiReclassifying] = useState(false)
   const [reclassifyPreview, setReclassifyPreview] = useState<{ skill: TaggedSkill; newCat: SkillCategory; reason: string }[] | null>(null)
 
-  const [journalSkills, setJournalSkills] = useState<JournalSkill[]>([])
+  const [journalSkills, setJournalSkills] = useState<TaggedSkill[]>([])
   const [analyzingJournals, setAnalyzingJournals] = useState(false)
   const [journalSkillsLoaded, setJournalSkillsLoaded] = useState(false)
+  const [extractStats, setExtractStats] = useState<{ passed: number; rejected: number; total: number } | null>(null)
+  const [confirmingId, setConfirmingId] = useState<string | null>(null)
   const [rateLimitToast, setRateLimitToast] = useState(false)
   const [expandedJournalSkill, setExpandedJournalSkill] = useState<string | null>(null)
   const [totalJournals, setTotalJournals] = useState(0)
@@ -172,16 +189,27 @@ export default function SkillsPage() {
 
   // ── Init ────────────────────────────────────────────────────────────────────
 
-  // Skills now persist server-side. On first load with no DB rows yet, migrate
-  // whatever was sitting in localStorage from the old client-only version once.
+  // 技能一律存資料庫。isManual||isConfirmed 進「我的技能庫」；其餘（inference 待確認）進「AI 建議」。
+  async function loadSkills() {
+    try {
+      const res = await fetch('/api/skills')
+      if (!res.ok) return
+      const { skills: all } = await res.json() as { skills: TaggedSkill[] }
+      setSkills(all.filter((s) => s.isManual || s.isConfirmed))
+      setJournalSkills(all.filter((s) => !s.isConfirmed))
+      setJournalSkillsLoaded(true)
+    } catch { /* ignore */ }
+  }
+
   useEffect(() => {
     (async () => {
-      try {
-        const res = await fetch('/api/skills')
-        if (!res.ok) return
-        const { skills: dbSkills } = await res.json() as { skills: TaggedSkill[] }
-        if (dbSkills.length > 0) { setSkills(dbSkills); return }
+      await loadSkills()
 
+      // 舊版 localStorage 手動技能庫，只在資料庫完全沒有資料時搬遷一次
+      try {
+        const check = await fetch('/api/skills')
+        const { skills: dbSkills } = await check.json() as { skills: TaggedSkill[] }
+        if (dbSkills.length > 0) return
         const raw = localStorage.getItem('career-skills')
         if (!raw) return
         const p = JSON.parse(raw)
@@ -193,16 +221,12 @@ export default function SkillsPage() {
           method: 'PUT', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ skills: legacy }),
         })
-        if (putRes.ok) setSkills(legacy)
+        if (putRes.ok) await loadSkills()
       } catch { /* ignore */ }
     })()
   }, [])
 
   useEffect(() => {
-    const raw = localStorage.getItem('career-journal-skills')
-    if (raw) {
-      try { setJournalSkills(JSON.parse(raw)); setJournalSkillsLoaded(true) } catch { /* ignore */ }
-    }
     fetch('/api/work-journal').then((r) => (r.ok ? r.json() : null)).then((res) => {
       if (!res) return
       const es = res.entries as { id: string; title: string }[]
@@ -376,26 +400,24 @@ ${skills.map((s) => `${s.name}（${s.category}）`).join('、')}
       })
       const data = await res.json()
       if (data.error === 'rate_limit') { setRateLimitToast(true); return }
-      const parsed: JournalSkill[] = (data.skills ?? []).map((s: { name: string; category: string; journal_ids: string[]; journalFrequency: number }) => ({
-        name: s.name,
-        category: (SKILL_CATEGORIES as readonly string[]).includes(s.category) ? s.category as SkillCategory : '專業技能' as SkillCategory,
-        journal_ids: s.journal_ids ?? [],
-        journalFrequency: s.journalFrequency ?? 0,
-      }))
-      setJournalSkills(parsed)
-      setJournalSkillsLoaded(true)
-      try { localStorage.setItem('career-journal-skills', JSON.stringify(parsed)) } catch { /* quota */ }
+      setExtractStats({ passed: data.passed ?? 0, rejected: data.rejected ?? 0, total: data.total ?? 0 })
+      setTimeout(() => setExtractStats(null), 6000)
+      await loadSkills()
     } catch { /* keep previous results */ }
     finally { setAnalyzingJournals(false) }
   }
 
-  function addJournalSkillToLibrary(jSkill: JournalSkill) {
-    if (skills.some((s) => norm(s.name) === norm(jSkill.name))) {
-      setDupAlert(`「${jSkill.name}」已在技能庫中`)
-      setTimeout(() => setDupAlert(''), 2500)
-      return
-    }
-    persist([...skills, { name: jSkill.name, category: jSkill.category }])
+  async function confirmSkill(skill: TaggedSkill) {
+    if (!skill.id) return
+    setConfirmingId(skill.id)
+    try {
+      const res = await fetch('/api/skills', {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: skill.id, isConfirmed: true }),
+      })
+      if (res.ok) await loadSkills()
+    } catch { /* ignore */ }
+    finally { setConfirmingId(null) }
   }
 
   function addCheckedSkills() {
@@ -592,12 +614,12 @@ ${skills.map((s) => `${s.name}（${s.category}）`).join('、')}
         </Card>
       )}
 
-      {/* ── Journal Skills Block ── */}
+      {/* ── AI 建議（待確認）Block ── */}
       <div className="rounded-2xl border border-warm-200 bg-white overflow-hidden">
         <div className="flex items-center justify-between px-5 py-4 border-b border-warm-100">
           <div>
-            <h2 className="text-sm font-semibold text-ink-800">📓 來自工作日誌的技能</h2>
-            <p className="text-xs text-ink-400 mt-0.5">AI 從日誌中擷取明確出現的技能詞彙</p>
+            <h2 className="text-sm font-semibold text-ink-800">🟡 AI 建議（待確認）</h2>
+            <p className="text-xs text-ink-400 mt-0.5">從工作日誌萃取，附逐字引用的原文證據，確認後才會用於履歷生成</p>
           </div>
           <button
             onClick={analyzeJournals}
@@ -607,6 +629,12 @@ ${skills.map((s) => `${s.name}（${s.category}）`).join('、')}
             {analyzingJournals ? <Spinner /> : '🔄'} {journalSkillsLoaded ? '重新分析日誌' : '分析日誌'}
           </button>
         </div>
+
+        {extractStats && (
+          <p className="px-5 py-2 text-xs text-terra-600 bg-terra-50 border-b border-terra-100">
+            本次擷取 {extractStats.total} 項，通過驗證 {extractStats.passed} 項，{extractStats.rejected} 項因無法比對原文而丟棄
+          </p>
+        )}
 
         {analyzingJournals ? (
           <div className="flex items-center gap-2 text-sm text-terra-500 py-8 justify-center">
@@ -619,16 +647,15 @@ ${skills.map((s) => `${s.name}（${s.category}）`).join('、')}
           </div>
         ) : journalSkills.length === 0 ? (
           <div className="py-8 text-center">
-            <p className="text-sm text-ink-400">日誌中沒有找到明確的技能詞彙</p>
+            <p className="text-sm text-ink-400">目前沒有待確認的建議</p>
           </div>
         ) : (
           <div className="divide-y divide-warm-100">
             {journalSkills.map((jSkill) => {
-              const freqPct = totalJournals > 0 ? Math.round((jSkill.journalFrequency / totalJournals) * 100) : 0
-              const alreadyAdded = skills.some((s) => norm(s.name) === norm(jSkill.name))
               const isExpanded = expandedJournalSkill === jSkill.name
+              const evidence = jSkill.evidence ?? []
               return (
-                <div key={jSkill.name} className="px-5 py-3 space-y-2">
+                <div key={jSkill.id ?? jSkill.name} className="px-5 py-3 space-y-2">
                   <div className="flex items-center gap-3">
                     <span className={`h-2 w-2 rounded-full shrink-0 ${CAT_DOT[jSkill.category] ?? 'bg-warm-400'}`} />
                     <span className="text-sm font-medium text-ink-800 flex-1">{jSkill.name}</span>
@@ -637,26 +664,23 @@ ${skills.map((s) => `${s.name}（${s.category}）`).join('、')}
                       onClick={() => setExpandedJournalSkill(isExpanded ? null : jSkill.name)}
                       className="text-xs text-ink-400 hover:text-ink-600 transition-colors whitespace-nowrap"
                     >
-                      {jSkill.journalFrequency} 篇 {isExpanded ? '▲' : '▼'}
+                      {jSkill.evidenceCount ?? evidence.length} 篇 {isExpanded ? '▲' : '▼'}
                     </button>
                     <button
-                      onClick={() => addJournalSkillToLibrary(jSkill)}
-                      disabled={alreadyAdded}
-                      className={`rounded-lg px-2.5 py-1 text-xs font-medium transition-all whitespace-nowrap ${alreadyAdded ? 'bg-sage-50 text-sage-500 cursor-default border border-sage-200' : 'bg-terra-500 text-white hover:bg-terra-700 shadow-[var(--shadow-warm-sm)]'}`}
+                      onClick={() => confirmSkill(jSkill)}
+                      disabled={confirmingId === jSkill.id}
+                      className="rounded-lg px-2.5 py-1 text-xs font-medium transition-all whitespace-nowrap bg-terra-500 text-white hover:bg-terra-700 shadow-[var(--shadow-warm-sm)] disabled:opacity-50"
                     >
-                      {alreadyAdded ? '已加入' : '加入技能庫'}
+                      {confirmingId === jSkill.id ? '確認中…' : '✓ 確認正確'}
                     </button>
                   </div>
-                  <div className="flex items-center gap-2 pl-5">
-                    <div className="flex-1 h-1.5 rounded-full bg-warm-100">
-                      <div className="h-full rounded-full bg-terra-400 transition-all" style={{ width: `${freqPct}%` }} />
-                    </div>
-                    <span className="text-[10px] text-ink-400 whitespace-nowrap">{jSkill.journalFrequency}/{totalJournals} 篇</span>
-                  </div>
                   {isExpanded && (
-                    <div className="pl-5 space-y-0.5">
-                      {jSkill.journal_ids.map((jid) => (
-                        <p key={jid} className="text-xs text-ink-500">· {journalEntriesMap[jid] ?? jid}</p>
+                    <div className="pl-5 space-y-1.5">
+                      {evidence.map((e) => (
+                        <div key={e.journalId} className="text-xs bg-cream-50 border border-warm-100 rounded-lg px-3 py-2">
+                          <p className="text-ink-400 mb-0.5">· {e.journalTitle || journalEntriesMap[e.journalId] || e.journalId}</p>
+                          <p className="text-ink-600">「{e.excerpt}」</p>
+                        </div>
                       ))}
                     </div>
                   )}

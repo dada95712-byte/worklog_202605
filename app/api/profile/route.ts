@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAuth } from '@/lib/auth-guard'
 import { prisma } from '@/lib/prisma'
+import { syncManualSkills, getSkillMap } from '@/lib/skill-sync'
 
 interface BasicInfo {
   nameZh: string; nameEn: string
@@ -24,7 +25,7 @@ export async function GET() {
   if (error) return error
   const userId = session!.user.id as string
 
-  const [basic, educations, experiences, internships, projects, languages, skills, certificates, activities, conferences, attachments, customBlocks] =
+  const [basic, educations, experiences, internships, projects, languages, skillMap, certificates, activities, conferences, attachments, customBlocks] =
     await Promise.all([
       prisma.profileBasic.findUnique({ where: { userId } }),
       prisma.profileEducation.findMany({ where: { userId }, orderBy: { sortOrder: 'asc' } }),
@@ -32,19 +33,13 @@ export async function GET() {
       prisma.profileInternship.findMany({ where: { userId }, orderBy: { sortOrder: 'asc' } }),
       prisma.profileProject.findMany({ where: { userId }, orderBy: { sortOrder: 'asc' } }),
       prisma.profileLanguage.findMany({ where: { userId } }),
-      prisma.profileSkill.findMany({ where: { userId } }),
+      getSkillMap(userId),
       prisma.profileCertificate.findMany({ where: { userId } }),
       prisma.profileActivity.findMany({ where: { userId } }),
       prisma.profileConference.findMany({ where: { userId } }),
       prisma.profileAttachment.findMany({ where: { userId } }),
       prisma.profileCustom.findMany({ where: { userId }, orderBy: { sortOrder: 'asc' } }),
     ])
-
-  const skillMap: Record<string, string[]> = {}
-  for (const s of skills) {
-    const cat = s.category ?? '專業技能'
-    ;(skillMap[cat] ??= []).push(s.skillName)
-  }
 
   return NextResponse.json({
     basic: {
@@ -92,10 +87,12 @@ export async function PUT(req: NextRequest) {
   } = body
 
   const skills = Object.entries(skillMap).flatMap(([category, names]) =>
-    names.map((skillName) => ({ userId, skillName, category }))
+    names.map((name) => ({ name, category }))
   )
 
   try {
+    await syncManualSkills(userId, skills)
+
     await prisma.$transaction([
       prisma.profileBasic.upsert({
         where: { userId },
@@ -127,9 +124,6 @@ export async function PUT(req: NextRequest) {
       prisma.profileLanguage.createMany({
         data: languages.map((l) => ({ userId, language: l.language, proficiency: l.proficiency })),
       }),
-
-      prisma.profileSkill.deleteMany({ where: { userId } }),
-      prisma.profileSkill.createMany({ data: skills }),
 
       prisma.profileCertificate.deleteMany({ where: { userId } }),
       prisma.profileCertificate.createMany({

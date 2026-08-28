@@ -23,7 +23,8 @@ model User {
   accounts        Account[]
   sessions        Session[]
   resumes         Resume[]
-  skills          Skill[]
+  userSkills      UserSkill[]
+  skillEvidence   SkillEvidence[]
   experiences     Experience[]
   jobApplications JobApplication[]
   interviewQAs    InterviewQA[]
@@ -42,7 +43,6 @@ model User {
   profileInternships  ProfileInternship[]
   profileProjects     ProfileProject[]
   profileLanguages    ProfileLanguage[]
-  profileSkills       ProfileSkill[]
   profileCertificates ProfileCertificate[]
   profileActivities   ProfileActivity[]
   profileConferences  ProfileConference[]
@@ -128,18 +128,37 @@ model ResumeScore {
   @@index([resumeId, createdAt])
 }
 
-model Skill {
+// 技能主檔 —— 取代舊的 Skill + ProfileSkill，個人檔案庫手填與日誌萃取共用同一份
+model UserSkill {
+  id          String   @id @default(cuid())
+  userId      String
+  skillName   String
+  category    String   @default("專業技能")
+  source      String   @default("manual") // manual | verbatim | evidence | inference
+  isManual    Boolean  @default(false)
+  isConfirmed Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  evidence    SkillEvidence[]
+
+  @@unique([userId, skillName])
+  @@index([userId])
+}
+
+// 技能的日誌證據 —— 每筆技能對應到具體的日誌逐字摘錄，出現頻率 = COUNT(*) 而非 AI 產生
+model SkillEvidence {
   id               String   @id @default(cuid())
   userId           String
-  name             String
-  category         String?
-  level            String   @default("intermediate")
-  source           String   @default("manual")
-  journalFrequency Int      @default(0)
-  journalIds       String[] @default([])
+  skillId          String
+  journalId        String
+  evidenceExcerpt  String   @db.Text
   createdAt        DateTime @default(now())
-  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user             User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  skill            UserSkill   @relation(fields: [skillId], references: [id], onDelete: Cascade)
+  journal          WorkJournal @relation(fields: [journalId], references: [id], onDelete: Cascade)
 
+  @@unique([skillId, journalId])
   @@index([userId])
 }
 
@@ -275,6 +294,7 @@ model WorkJournal {
   updatedAt DateTime @updatedAt
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   achievements CareerAchievement[]
+  skillEvidence SkillEvidence[]
 }
 
 // AI 從日誌萃取的量化成就 —— 待確認/已確認狀態追蹤，只有已確認的才進職涯成就總覽
@@ -412,19 +432,6 @@ model ProfileLanguage {
 
   @@index([userId])
   @@map("profile_language")
-}
-
-model ProfileSkill {
-  id        String   @id @default(cuid())
-  userId    String
-  skillName String
-  category  String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-  @@map("profile_skill")
 }
 
 model ProfileCertificate {

@@ -9,12 +9,19 @@ import { PageTooltip } from '@/components/onboarding/page-tooltip'
 const SKILL_CATEGORIES = ['專業技能', '工具與軟體', '核心職能', '軟實力', '語言能力', '證照與認證', '學習中'] as const
 type SkillCategory = typeof SKILL_CATEGORIES[number]
 
-interface TaggedSkill { name: string; category: SkillCategory }
-interface JournalSkill {
+interface SkillEvidenceOut { journalId: string; journalTitle: string; excerpt: string }
+interface TaggedSkill {
   name: string
   category: SkillCategory
-  journal_ids: string[]
-  journalFrequency: number
+  id?: string
+  source?: 'manual' | 'verbatim' | 'evidence' | 'inference'
+  isManual?: boolean
+  isConfirmed?: boolean
+  evidenceCount?: number
+  evidence?: SkillEvidenceOut[]
+}
+const SOURCE_BADGE: Record<NonNullable<TaggedSkill['source']>, string> = {
+  manual: '', verbatim: '🟢', evidence: '🟢', inference: '🟡',
 }
 interface Application {
   id: string
@@ -46,8 +53,9 @@ const CAT_BG: Record<SkillCategory, string> = {
 
 export default function SkillMapPage() {
   const [skills, setSkills] = useState<TaggedSkill[]>([])
-  const [journalSkills, setJournalSkills] = useState<JournalSkill[]>([])
+  const [journalSkills, setJournalSkills] = useState<TaggedSkill[]>([])
   const [totalJournals, setTotalJournals] = useState(0)
+  const [expandedSkill, setExpandedSkill] = useState<string | null>(null)
   const [missingTop10, setMissingTop10] = useState<{ skill: string; count: number }[]>([])
   const [jobsWithAnalysis, setJobsWithAnalysis] = useState(0)
   const [catCollapsed, setCatCollapsed] = useState<Partial<Record<SkillCategory, boolean>>>(
@@ -55,16 +63,14 @@ export default function SkillMapPage() {
   )
 
   useEffect(() => {
-    // Load personal skills
+    // 技能一律來自資料庫：確認過（含手動加入）進主要分類全覽，有日誌證據的進技能頻率區塊
     fetch('/api/skills').then((r) => (r.ok ? r.json() : null)).then((res) => {
-      if (res) setSkills(res.skills)
+      if (!res) return
+      const all: TaggedSkill[] = res.skills
+      setSkills(all.filter((s) => s.isManual || s.isConfirmed))
+      setJournalSkills(all.filter((s) => (s.evidenceCount ?? 0) > 0))
     }).catch(() => { /* ignore */ })
 
-    // Load journal skills (AI-suggestion cache stays local) + journal count
-    try {
-      const raw = localStorage.getItem('career-journal-skills')
-      if (raw) setJournalSkills(JSON.parse(raw))
-    } catch { /* ignore */ }
     fetch('/api/work-journal').then((r) => (r.ok ? r.json() : null)).then((res) => {
       if (res) setTotalJournals(res.entries.length)
     }).catch(() => { /* ignore */ })
@@ -98,7 +104,7 @@ export default function SkillMapPage() {
     return acc
   }, {} as Record<SkillCategory, TaggedSkill[]>)
 
-  const maxFreq = journalSkills.reduce((m, s) => Math.max(m, s.journalFrequency), 0)
+  const maxFreq = journalSkills.reduce((m, s) => Math.max(m, s.evidenceCount ?? 0), 0)
   const maxMissing = missingTop10[0]?.count ?? 1
 
   return (
@@ -159,9 +165,11 @@ export default function SkillMapPage() {
                       {catSkills.map((s) => (
                         <span
                           key={s.name}
+                          title={s.source && s.source !== 'manual' ? `${s.evidenceCount ?? 0} 篇日誌佐證` : undefined}
                           className={`rounded-full border px-3 py-1 text-xs ${CAT_BG[cat]}`}
                         >
                           {s.name}
+                          {s.source && s.source !== 'manual' && <span className="ml-1">{SOURCE_BADGE[s.source]}</span>}
                         </span>
                       ))}
                     </div>
@@ -194,26 +202,48 @@ export default function SkillMapPage() {
           <div className="py-10 text-center space-y-2">
             <p className="text-2xl">📓</p>
             <p className="text-sm text-ink-400">尚未從日誌分析技能</p>
-            <Link href="/work-journal" className="inline-block mt-1 text-sm text-terra-500 hover:text-terra-700 transition-colors">
-              前往 Work Journal 記錄日誌 →
+            <Link href="/dashboard/skills" className="inline-block mt-1 text-sm text-terra-500 hover:text-terra-700 transition-colors">
+              前往技能庫「分析日誌」→
             </Link>
           </div>
         ) : (
           <div className="divide-y divide-warm-100">
             {journalSkills
               .slice()
-              .sort((a, b) => b.journalFrequency - a.journalFrequency)
+              .sort((a, b) => (b.evidenceCount ?? 0) - (a.evidenceCount ?? 0))
               .map((jSkill) => {
-                const pct = maxFreq > 0 ? Math.round((jSkill.journalFrequency / maxFreq) * 100) : 0
+                const count = jSkill.evidenceCount ?? 0
+                const pct = maxFreq > 0 ? Math.round((count / maxFreq) * 100) : 0
+                const key = jSkill.id ?? jSkill.name
+                const isExpanded = expandedSkill === key
                 return (
-                  <div key={jSkill.name} className="px-5 py-3 flex items-center gap-3">
-                    <span className={`h-2 w-2 rounded-full shrink-0 ${CAT_DOT[jSkill.category] ?? 'bg-warm-400'}`} />
-                    <span className="text-sm font-medium text-ink-800 w-28 shrink-0 truncate">{jSkill.name}</span>
-                    <div className="hidden sm:block flex-1 h-1.5 rounded-full bg-warm-100">
-                      <div className="h-full rounded-full bg-terra-400 transition-all" style={{ width: `${pct}%` }} />
-                    </div>
-                    <span className="text-xs text-ink-400 shrink-0 ml-auto sm:ml-0 sm:w-14 text-right">{jSkill.journalFrequency}/{totalJournals}</span>
-                    <span className="hidden sm:inline text-[10px] text-ink-300 shrink-0 w-16 text-right">{jSkill.category}</span>
+                  <div key={key} className="px-5 py-3 space-y-2">
+                    <button type="button" onClick={() => setExpandedSkill(isExpanded ? null : key)} className="w-full flex items-center gap-3 text-left">
+                      <span className={`h-2 w-2 rounded-full shrink-0 ${CAT_DOT[jSkill.category] ?? 'bg-warm-400'}`} />
+                      <span className="text-sm font-medium text-ink-800 w-28 shrink-0 truncate">
+                        {jSkill.name} {jSkill.source && <span className="text-[10px]">{SOURCE_BADGE[jSkill.source]}</span>}
+                      </span>
+                      <div className="hidden sm:block flex-1 h-1.5 rounded-full bg-warm-100">
+                        <div className="h-full rounded-full bg-terra-400 transition-all" style={{ width: `${pct}%` }} />
+                      </div>
+                      <span className="text-xs text-ink-400 shrink-0 ml-auto sm:ml-0 sm:w-14 text-right">{count}/{totalJournals}</span>
+                      <span className="hidden sm:inline text-[10px] text-ink-300 shrink-0 w-16 text-right">{jSkill.category}</span>
+                    </button>
+                    {isExpanded && (
+                      <div className="pl-5 space-y-1.5">
+                        {(jSkill.evidence ?? []).map((e) => (
+                          <div key={e.journalId} className="text-xs bg-cream-50 border border-warm-100 rounded-lg px-3 py-2">
+                            <p className="text-ink-400 mb-0.5">· {e.journalTitle || e.journalId}</p>
+                            <p className="text-ink-600">「{e.excerpt}」</p>
+                          </div>
+                        ))}
+                        {!jSkill.isConfirmed && (
+                          <Link href="/dashboard/skills" className="inline-block text-xs text-terra-500 hover:text-terra-700 transition-colors">
+                            前往技能庫確認 →
+                          </Link>
+                        )}
+                      </div>
+                    )}
                   </div>
                 )
               })}
