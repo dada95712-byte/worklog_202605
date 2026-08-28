@@ -3,8 +3,15 @@ import { NextResponse } from 'next/server'
 import { extractJSON } from '@/lib/extract-json'
 import { requireAuth } from '@/lib/auth-guard'
 import { prisma } from '@/lib/prisma'
-import { buildSkillDictionary, isDictionarySkill, LITERAL_CATEGORIES } from '@/lib/skill-dictionary'
+import { buildSkillDictionary, isDictionarySkill } from '@/lib/skill-dictionary'
 import { validateVerbatimSkill, validateEvidenceExcerpt } from '@/lib/skill-validator'
+
+// AI 對顯性技能的分類字串常會簡寫（如「工具」而非「工具與軟體」），
+// 用關鍵字寬鬆判斷，不要求逐字相符
+function normalizeLiteralCategory(raw: string): string {
+  if (/證照|認證|執照|licen[sc]e|certif/i.test(raw)) return '證照與認證'
+  return '工具與軟體'
+}
 
 interface JournalIn {
   id: string
@@ -117,19 +124,21 @@ ${journalText.slice(0, 8000)}
       const evidenceList = Array.isArray(s.evidence) ? s.evidence : []
       if (!skillName || evidenceList.length === 0) { rejected++; continue }
 
-      const isLiteralCategory = (LITERAL_CATEGORIES as readonly string[]).includes(s.category)
+      // 分類判斷以「技能名稱是否在字典裡」為準，不信任 AI 回傳的 category 字串本身
+      // （AI 有時會把「工具與軟體」簡寫成「工具」等，若直接比對字串會誤判丟棄）
       const dictCategory = isDictionarySkill(skillName, dictionary)
 
-      if (isLiteralCategory) {
-        // 顯性技能：skill_name 本身必須逐字出現在其中一篇引用的日誌原文
+      if (!dictCategory) {
+        // 不在字典裡 → 視為顯性技能（工具/證照類），skill_name 本身必須逐字出現在日誌原文
         const validEvidence = evidenceList.filter((e) => {
           const content = journalMap.get(e.journal_id)
           return content && validateVerbatimSkill(skillName, content)
         })
         if (validEvidence.length === 0) { rejected++; continue }
-        await upsertSkill(userId, skillName, s.category, 'verbatim', true, validEvidence, journalMap)
+        const category = normalizeLiteralCategory(s.category)
+        await upsertSkill(userId, skillName, category, 'verbatim', true, validEvidence, journalMap)
         passed++
-        savedSkills.push({ skillName, category: s.category, source: 'verbatim' })
+        savedSkills.push({ skillName, category, source: 'verbatim' })
         continue
       }
 
