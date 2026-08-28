@@ -25,6 +25,8 @@ model User {
   resumes         Resume[]
   userSkills      UserSkill[]
   skillEvidence   SkillEvidence[]
+  careerInsights      CareerInsight[]
+  careerInsightEvidence CareerInsightEvidence[]
   experiences     Experience[]
   jobApplications JobApplication[]
   interviewQAs    InterviewQA[]
@@ -162,6 +164,37 @@ model SkillEvidence {
   @@index([userId])
 }
 
+// 職涯洞察 —— 對行為模式的觀察，不是技能，不參與履歷生成，跟 UserSkill 完全獨立
+model CareerInsight {
+  id           String   @id @default(cuid())
+  userId       String
+  insightText  String   @db.Text
+  isConfirmed  Boolean  @default(false)
+  isDismissed  Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  user         User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  evidence     CareerInsightEvidence[]
+
+  @@index([userId])
+}
+
+// 職涯洞察的日誌證據 —— 每條洞察至少3篇，任一篇比對失敗整條丟棄
+model CareerInsightEvidence {
+  id               String   @id @default(cuid())
+  userId           String
+  insightId        String
+  journalId        String
+  evidenceExcerpt  String   @db.Text
+  createdAt        DateTime @default(now())
+  user             User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  insight          CareerInsight @relation(fields: [insightId], references: [id], onDelete: Cascade)
+  journal          WorkJournal   @relation(fields: [journalId], references: [id], onDelete: Cascade)
+
+  @@unique([insightId, journalId])
+  @@index([userId])
+}
+
 model Experience {
   id           String    @id @default(cuid())
   userId       String
@@ -295,6 +328,7 @@ model WorkJournal {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   achievements CareerAchievement[]
   skillEvidence SkillEvidence[]
+  careerInsightEvidence CareerInsightEvidence[]
 }
 
 // AI 從日誌萃取的量化成就 —— 待確認/已確認狀態追蹤，只有已確認的才進職涯成就總覽

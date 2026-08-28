@@ -18,6 +18,15 @@ interface CareerAchievementItem {
   createdAt: string
 }
 
+interface CareerInsightEvidenceItem { journalId: string; journalTitle: string; journalDate: string | null; excerpt: string }
+interface CareerInsightItem {
+  id: string
+  text: string
+  isConfirmed: boolean
+  evidenceCount: number
+  evidence: CareerInsightEvidenceItem[]
+}
+
 interface JournalEntry {
   id: string
   title: string
@@ -188,6 +197,15 @@ export default function WorkJournalPage() {
   const [extracting, setExtracting] = useState(false)
   const [confirmingId, setConfirmingId] = useState<string | null>(null)
 
+  // 職涯洞察（AI 推論的行為模式觀察，跟成就是兩套獨立資料）
+  const [insights, setInsights] = useState<CareerInsightItem[]>([])
+  const [insightsLoading, setInsightsLoading] = useState(false)
+  const [analyzingInsights, setAnalyzingInsights] = useState(false)
+  const [insightActionId, setInsightActionId] = useState<string | null>(null)
+  const [expandedInsight, setExpandedInsight] = useState<string | null>(null)
+  const [insightStats, setInsightStats] = useState<{ passed: number; rejected: number; total: number } | null>(null)
+  const [insightError, setInsightError] = useState('')
+
   // Search / filter / sort
   const [search, setSearch] = useState('')
   const [sortBy, setSortBy] = useState<'date-desc' | 'date-asc' | 'company'>('date-desc')
@@ -270,6 +288,11 @@ export default function WorkJournalPage() {
       .finally(() => setAchievementsLoading(false))
   }, [mainTab])
 
+  useEffect(() => {
+    if (mainTab !== 'achievements') return
+    loadInsights()
+  }, [mainTab])
+
   async function handleExtractAchievements() {
     if (entries.length === 0) return
     setExtracting(true)
@@ -303,6 +326,53 @@ export default function WorkJournalPage() {
       }
     } catch { /* silent */ }
     finally { setConfirmingId(null) }
+  }
+
+  async function loadInsights() {
+    setInsightsLoading(true)
+    try {
+      const res = await fetch('/api/journals/analyze-insights')
+      const data = await res.json()
+      setInsights(data.insights ?? [])
+    } catch { /* keep whatever was already loaded */ }
+    finally { setInsightsLoading(false) }
+  }
+
+  async function handleAnalyzeInsights() {
+    setAnalyzingInsights(true)
+    setInsightError('')
+    try {
+      const res = await fetch('/api/journals/analyze-insights', { method: 'POST' })
+      const data = await res.json()
+      if (data.error === 'insufficient_journals') { setInsightError(data.message); return }
+      if (data.error) { setInsightError('分析失敗，請稍後再試'); return }
+      setInsightStats({ passed: data.passed ?? 0, rejected: data.rejected ?? 0, total: data.total ?? 0 })
+      setTimeout(() => setInsightStats(null), 6000)
+      await loadInsights()
+    } catch { setInsightError('分析失敗，請稍後再試') }
+    finally { setAnalyzingInsights(false) }
+  }
+
+  async function handleInsightAction(id: string, action: 'confirm' | 'dismiss') {
+    setInsightActionId(id)
+    try {
+      const res = await fetch('/api/journals/analyze-insights', {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, action }),
+      })
+      if (res.ok) {
+        if (action === 'dismiss') {
+          setInsights((prev) => prev.filter((i) => i.id !== id))
+        } else {
+          setInsights((prev) => prev.map((i) => i.id === id ? { ...i, isConfirmed: true } : i))
+        }
+      }
+    } catch { /* silent */ }
+    finally { setInsightActionId(null) }
+  }
+
+  async function copyInsight(text: string) {
+    try { await navigator.clipboard.writeText(text) } catch { /* clipboard unavailable */ }
   }
 
   // ── Core handlers ─────────────────────────────────────────────────────────
@@ -1129,6 +1199,94 @@ export default function WorkJournalPage() {
                   </div>
                 )}
               </>
+            )}
+          </div>
+
+          {/* 💡 職涯洞察 —— 行為模式觀察，跟成就是完全獨立的兩套資料，不進技能庫、不參與履歷生成 */}
+          <div className="rounded-xl border border-warm-200 bg-white p-4 space-y-3">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-xs font-semibold text-ink-700">💡 觀察</p>
+                <p className="text-[11px] text-ink-400 mt-0.5">AI 從多篇日誌歸納出的行為模式，僅供參考，不會用於履歷生成</p>
+              </div>
+              <button
+                onClick={handleAnalyzeInsights}
+                disabled={analyzingInsights}
+                className="rounded-full bg-terra-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-terra-600 disabled:opacity-50 transition-colors whitespace-nowrap"
+              >
+                {analyzingInsights ? '分析中…' : '重新分析'}
+              </button>
+            </div>
+
+            {insightStats && (
+              <p className="text-xs text-terra-600 bg-terra-50 border border-terra-100 rounded-lg px-3 py-2">
+                本次擷取 {insightStats.total} 條，通過驗證 {insightStats.passed} 條，{insightStats.rejected} 條因證據不足或無法比對原文而丟棄
+              </p>
+            )}
+            {insightError && (
+              <p className="text-xs text-ink-400 bg-cream-50 border border-warm-100 rounded-lg px-3 py-2">{insightError}</p>
+            )}
+
+            {insightsLoading ? (
+              <p className="text-xs text-ink-400 py-4 text-center">載入中…</p>
+            ) : insights.length === 0 ? (
+              <p className="text-xs text-ink-400 py-6 text-center leading-relaxed">日誌累積得再多一些，這裡就會出現對你做事方式的觀察。</p>
+            ) : (
+              <div className="space-y-2">
+                {insights.map((ins) => {
+                  const isExpanded = expandedInsight === ins.id
+                  return (
+                    <div key={ins.id} className={`rounded-lg border p-3 space-y-1.5 ${ins.isConfirmed ? 'border-sage-200 bg-sage-50' : 'border-honey-200 bg-honey-50'}`}>
+                      <div className="flex items-start gap-2">
+                        <span className="text-[10px] shrink-0 mt-0.5">{ins.isConfirmed ? '🟢' : '🟡'}</span>
+                        <p className="text-sm text-ink-800 flex-1">{ins.text}</p>
+                      </div>
+                      <div className="flex items-center gap-3 pl-5">
+                        <button
+                          onClick={() => setExpandedInsight(isExpanded ? null : ins.id)}
+                          className="text-[11px] text-ink-400 hover:text-ink-600 transition-colors"
+                        >
+                          來自 {ins.evidenceCount} 篇日誌 {isExpanded ? '▲' : '▼'}
+                        </button>
+                        <button
+                          onClick={() => copyInsight(ins.text)}
+                          className="text-[11px] text-ink-400 hover:text-ink-600 transition-colors"
+                        >
+                          複製文字
+                        </button>
+                        {!ins.isConfirmed && (
+                          <>
+                            <button
+                              onClick={() => handleInsightAction(ins.id, 'confirm')}
+                              disabled={insightActionId === ins.id}
+                              className="text-[11px] font-medium text-terra-600 hover:text-terra-700 disabled:opacity-50 transition-colors"
+                            >
+                              ✓ 這確實是我
+                            </button>
+                            <button
+                              onClick={() => handleInsightAction(ins.id, 'dismiss')}
+                              disabled={insightActionId === ins.id}
+                              className="text-[11px] text-ink-400 hover:text-red-400 disabled:opacity-50 transition-colors"
+                            >
+                              ✕ 不太準確
+                            </button>
+                          </>
+                        )}
+                      </div>
+                      {isExpanded && (
+                        <div className="pl-5 space-y-1.5 pt-1">
+                          {ins.evidence.map((e) => (
+                            <div key={e.journalId} className="text-xs bg-white border border-warm-100 rounded-lg px-3 py-2">
+                              <p className="text-ink-400 mb-0.5">· {e.journalTitle || e.journalId}{e.journalDate && ` · ${fmtDate(e.journalDate)}`}</p>
+                              <p className="text-ink-600">「{e.excerpt}」</p>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
             )}
           </div>
 
