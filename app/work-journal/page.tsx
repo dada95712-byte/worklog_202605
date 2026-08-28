@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
+import Link from 'next/link'
 import { PageTooltip } from '@/components/onboarding/page-tooltip'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -10,6 +11,8 @@ interface JournalImage { url: string; aiDescription?: string; uploadedAt: string
 interface CareerAchievementItem {
   id: string
   journalId: string | null
+  journalTitle: string
+  journalDate: string | null
   company: string | null
   text: string
   metric: string | null
@@ -17,6 +20,8 @@ interface CareerAchievementItem {
   isConfirmed: boolean
   createdAt: string
 }
+
+interface PendingSkillItem { id: string; name: string; category: string; evidenceCount: number }
 
 interface CareerInsightEvidenceItem { journalId: string; journalTitle: string; journalDate: string | null; excerpt: string }
 interface CareerInsightItem {
@@ -184,7 +189,7 @@ function VoiceButton({ onResult, listeningField, fieldKey, setListeningField }: 
 // ── Main Component ─────────────────────────────────────────────────────────────
 
 export default function WorkJournalPage() {
-  const [mainTab, setMainTab] = useState<'list' | 'timeline' | 'achievements'>('list')
+  const [mainTab, setMainTab] = useState<'list' | 'timeline' | 'pending' | 'career'>('list')
   const [view, setView] = useState<'main' | 'add' | 'detail'>('main')
   const [entries, setEntries] = useState<JournalEntry[]>([])
   const [draft, setDraft] = useState<JournalEntry>(emptyEntry())
@@ -196,6 +201,10 @@ export default function WorkJournalPage() {
   const [achievementsLoading, setAchievementsLoading] = useState(false)
   const [extracting, setExtracting] = useState(false)
   const [confirmingId, setConfirmingId] = useState<string | null>(null)
+
+  // 待確認技能（技能萃取改版後，AI 推論但未確認的技能也收在「待確認」頁一起審核）
+  const [pendingSkills, setPendingSkills] = useState<PendingSkillItem[]>([])
+  const [skillActionId, setSkillActionId] = useState<string | null>(null)
 
   // 職涯洞察（AI 推論的行為模式觀察，跟成就是兩套獨立資料）
   const [insights, setInsights] = useState<CareerInsightItem[]>([])
@@ -277,9 +286,9 @@ export default function WorkJournalPage() {
     })()
   }, [])
 
-  // 進到「成就總覽」分頁時才載入 AI 萃取的成就清單
+  // 進到「待確認」或「職涯成就」分頁時才載入 AI 萃取的成就／技能／洞察清單
   useEffect(() => {
-    if (mainTab !== 'achievements') return
+    if (mainTab !== 'pending' && mainTab !== 'career') return
     setAchievementsLoading(true)
     fetch('/api/journals/achievements')
       .then((res) => res.json())
@@ -289,9 +298,32 @@ export default function WorkJournalPage() {
   }, [mainTab])
 
   useEffect(() => {
-    if (mainTab !== 'achievements') return
+    if (mainTab !== 'pending' && mainTab !== 'career') return
     loadInsights()
   }, [mainTab])
+
+  useEffect(() => {
+    if (mainTab !== 'pending') return
+    fetch('/api/skills').then((r) => (r.ok ? r.json() : null)).then((res) => {
+      if (!res) return
+      const list: PendingSkillItem[] = (res.skills ?? [])
+        .filter((s: { isConfirmed: boolean; isManual: boolean }) => !s.isConfirmed && !s.isManual)
+        .map((s: { id: string; name: string; category: string; evidenceCount: number }) => ({ id: s.id, name: s.name, category: s.category, evidenceCount: s.evidenceCount }))
+      setPendingSkills(list)
+    }).catch(() => { /* keep whatever was already loaded */ })
+  }, [mainTab])
+
+  async function confirmPendingSkill(id: string) {
+    setSkillActionId(id)
+    try {
+      const res = await fetch('/api/skills', {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, isConfirmed: true }),
+      })
+      if (res.ok) setPendingSkills((prev) => prev.filter((s) => s.id !== id))
+    } catch { /* silent */ }
+    finally { setSkillActionId(null) }
+  }
 
   async function handleExtractAchievements() {
     if (entries.length === 0) return
@@ -314,15 +346,19 @@ export default function WorkJournalPage() {
     finally { setExtracting(false) }
   }
 
-  async function handleConfirmAchievement(id: string) {
+  async function handleAchievementAction(id: string, action: 'confirm' | 'dismiss') {
     setConfirmingId(id)
     try {
       const res = await fetch('/api/journals/achievements', {
         method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, isConfirmed: true }),
+        body: JSON.stringify({ id, action }),
       })
       if (res.ok) {
-        setAchievements((prev) => prev.map((a) => a.id === id ? { ...a, isConfirmed: true } : a))
+        if (action === 'dismiss') {
+          setAchievements((prev) => prev.filter((a) => a.id !== id))
+        } else {
+          setAchievements((prev) => prev.map((a) => a.id === id ? { ...a, isConfirmed: true } : a))
+        }
       }
     } catch { /* silent */ }
     finally { setConfirmingId(null) }
@@ -1016,20 +1052,31 @@ export default function WorkJournalPage() {
       </div>
 
       {/* Tab bar — icon only on mobile */}
-      <div className="flex gap-1 rounded-xl border border-warm-200 bg-white p-1 w-fit shadow-[var(--shadow-warm-xs)]">
-        {([
-          { key: 'list',         icon: '📋', label: '日誌列表' },
-          { key: 'timeline',     icon: '📅', label: '時間軸' },
-          { key: 'achievements', icon: '🏆', label: '成就總覽' },
-        ] as const).map(({ key, icon, label }) => (
-          <button key={key} onClick={() => setMainTab(key)}
-            className={`rounded-lg px-3 md:px-4 py-1.5 text-xs md:text-sm font-medium transition-all ${mainTab === key ? 'bg-cream-200 text-ink-900 shadow-sm' : 'text-ink-500 hover:text-ink-600'}`}
-            title={label}>
-            <span className="md:hidden">{icon}</span>
-            <span className="hidden md:inline">{icon} {label}</span>
-          </button>
-        ))}
-      </div>
+      {(() => {
+        const pendingCount = achievements.filter((a) => !a.isConfirmed).length
+          + pendingSkills.length
+          + insights.filter((i) => !i.isConfirmed).length
+        return (
+          <div className="flex gap-1 rounded-xl border border-warm-200 bg-white p-1 w-fit shadow-[var(--shadow-warm-xs)]">
+            {([
+              { key: 'list',     icon: '📋', label: '日誌列表', badge: 0 },
+              { key: 'timeline', icon: '📅', label: '時間軸', badge: 0 },
+              { key: 'pending',  icon: '📥', label: '待確認', badge: pendingCount },
+              { key: 'career',   icon: '🏆', label: '職涯成就', badge: 0 },
+            ] as const).map(({ key, icon, label, badge }) => (
+              <button key={key} onClick={() => setMainTab(key)}
+                className={`relative rounded-lg px-3 md:px-4 py-1.5 text-xs md:text-sm font-medium transition-all ${mainTab === key ? 'bg-cream-200 text-ink-900 shadow-sm' : 'text-ink-500 hover:text-ink-600'}`}
+                title={label}>
+                <span className="md:hidden">{icon}</span>
+                <span className="hidden md:inline">
+                  {icon} {label}{!!badge && ` (${badge > 9 ? '9+' : badge})`}
+                </span>
+                {!!badge && <span className="md:hidden absolute -top-1 -right-1 h-4 min-w-4 px-0.5 rounded-full bg-terra-500 text-white text-[9px] leading-4 text-center">{badge > 9 ? '9+' : badge}</span>}
+              </button>
+            ))}
+          </div>
+        )
+      })()}
 
       {/* ── 日誌列表 ── */}
       {mainTab === 'list' && (
@@ -1129,30 +1176,61 @@ export default function WorkJournalPage() {
               </div>
             </div>
           ))}
+
+          {/* Top tags */}
+          {achievementStats.topTags.length > 0 && (
+            <div className="rounded-xl border border-warm-200 bg-white p-4 space-y-3">
+              <p className="text-xs font-semibold text-ink-700">🏷 常用標籤</p>
+              <div className="flex flex-wrap gap-2">
+                {achievementStats.topTags.map(([tag, count]) => (
+                  <button key={tag} onClick={() => { setMainTab('list'); setFilterTag(tag) }}
+                    className="flex items-center gap-1.5 rounded-full border border-terra-200 bg-terra-50 px-3 py-1 text-xs text-terra-700 hover:bg-terra-100 transition-colors">
+                    {tag}
+                    <span className="font-bold text-terra-500">{count}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Top companies */}
+          {achievementStats.topCompanies.length > 0 && (
+            <div className="rounded-xl border border-warm-200 bg-white p-4 space-y-3">
+              <p className="text-xs font-semibold text-ink-700">🏢 記錄最多的公司</p>
+              <div className="space-y-2">
+                {achievementStats.topCompanies.map(([company, count]) => (
+                  <div key={company} className="flex items-center gap-3">
+                    <span className="text-sm text-ink-700 flex-1">{company}</span>
+                    <div className="flex-1 max-w-[100px] h-1.5 bg-warm-200 rounded-full overflow-hidden">
+                      <div className="h-full bg-terra-400 rounded-full" style={{ width: `${(count / achievementStats.topCompanies[0][1]) * 100}%` }} />
+                    </div>
+                    <span className="text-xs text-ink-400 w-8 text-right">{count} 篇</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
-      {/* ── 成就總覽 ── */}
-      {mainTab === 'achievements' && (
+      {/* ── 待確認 ── */}
+      {mainTab === 'pending' && (() => {
+        const pendingAchievements = achievements.filter((a) => !a.isConfirmed)
+        const pendingInsights = insights.filter((i) => !i.isConfirmed)
+        const nothingPending = pendingAchievements.length === 0 && pendingSkills.length === 0 && pendingInsights.length === 0
+          && !achievementsLoading && !insightsLoading
+        return (
         <div className="space-y-5">
-          {/* Stats */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-            {[
-              { label: '總日誌數', value: achievementStats.total, color: 'bg-white border-warm-200 text-ink-700' },
-              { label: 'STAR 格式', value: achievementStats.starCount, color: 'bg-sage-50 border-sage-200 text-sage-700' },
-              { label: '有圖片', value: entries.filter((e) => e.images?.length).length, color: 'bg-honey-50 border-honey-200 text-honey-700' },
-            ].map((s) => (
-              <div key={s.label} className={`rounded-2xl border px-4 py-3 shadow-[var(--shadow-warm-xs)] ${s.color}`}>
-                <p className="text-2xl font-bold">{s.value}</p>
-                <p className="text-xs mt-0.5 opacity-70">{s.label}</p>
-              </div>
-            ))}
-          </div>
+          {nothingPending && (
+            <div className="py-16 text-center text-ink-400 text-sm leading-relaxed">
+              目前沒有待確認的項目。新增日誌後，AI 擷取到的成就與技能會出現在這裡。
+            </div>
+          )}
 
-          {/* AI 萃取成就 —— 待確認/已確認 */}
+          {/* AI 萃取成就 —— 只顯示待確認的 */}
           <div className="rounded-xl border border-warm-200 bg-white p-4 space-y-3">
             <div className="flex items-center justify-between gap-3">
-              <p className="text-xs font-semibold text-ink-700">🤖 AI 萃取的量化成就</p>
+              <p className="text-xs font-semibold text-ink-700">🏆 AI 萃取的成就</p>
               <button
                 onClick={handleExtractAchievements}
                 disabled={extracting || entries.length === 0}
@@ -1164,43 +1242,71 @@ export default function WorkJournalPage() {
 
             {achievementsLoading ? (
               <p className="text-xs text-ink-400 py-4 text-center">載入中…</p>
-            ) : achievements.length === 0 ? (
-              <p className="text-xs text-ink-400 py-4 text-center">還沒有萃取過成就，點右上角按鈕從日誌自動找出可量化的成就。</p>
+            ) : pendingAchievements.length === 0 ? (
+              <p className="text-xs text-ink-400 py-4 text-center">沒有待確認的成就，點右上角按鈕從日誌自動萃取。</p>
             ) : (
-              <>
-                {achievements.some((a) => !a.isConfirmed) && (
-                  <div className="space-y-2">
-                    <p className="text-[11px] font-medium text-honey-700">⚠️ 待確認</p>
-                    {achievements.filter((a) => !a.isConfirmed).map((a) => (
-                      <div key={a.id} className="rounded-lg border border-honey-200 bg-honey-50 p-3 space-y-1.5">
-                        <p className="text-sm text-ink-800">{a.text}{a.metric && <span className="ml-1 font-semibold text-terra-600">（{a.metric}）</span>}</p>
-                        {a.company && <p className="text-[11px] text-ink-400">📌 {a.company}</p>}
-                        <button
-                          onClick={() => handleConfirmAchievement(a.id)}
-                          disabled={confirmingId === a.id}
-                          className="rounded-full border border-terra-300 bg-white px-2.5 py-1 text-[11px] font-medium text-terra-600 hover:bg-terra-50 disabled:opacity-50 transition-colors"
-                        >
-                          {confirmingId === a.id ? '確認中…' : '✓ 確認正確'}
-                        </button>
-                      </div>
-                    ))}
+              <div className="space-y-2">
+                {pendingAchievements.map((a) => (
+                  <div key={a.id} className="rounded-lg border border-honey-200 bg-honey-50 p-3 space-y-1.5">
+                    <button
+                      onClick={() => { const e = entries.find((x) => x.id === a.journalId); if (e) { setDetailEntry(e); setInterviewMatches(null); setView('detail') } }}
+                      disabled={!a.journalId}
+                      className="text-left w-full"
+                    >
+                      <p className="text-sm text-ink-800">{a.text}{a.metric && <span className="ml-1 font-semibold text-terra-600">（{a.metric}）</span>}</p>
+                      <p className="text-[11px] text-ink-400 mt-1">
+                        📓 {a.journalTitle || '日誌'}{a.journalDate && ` · ${fmtDate(a.journalDate)}`}{a.company && ` · ${a.company}`}
+                      </p>
+                      {a.journalExcerpt && (
+                        <p className="text-[11px] text-ink-500 mt-1 bg-white border border-warm-100 rounded-lg px-2.5 py-1.5 line-clamp-3">「{a.journalExcerpt}」</p>
+                      )}
+                    </button>
+                    <div className="flex items-center gap-3">
+                      <button
+                        onClick={() => handleAchievementAction(a.id, 'confirm')}
+                        disabled={confirmingId === a.id}
+                        className="rounded-full border border-terra-300 bg-white px-2.5 py-1 text-[11px] font-medium text-terra-600 hover:bg-terra-50 disabled:opacity-50 transition-colors"
+                      >
+                        {confirmingId === a.id ? '處理中…' : '✓ 確認正確'}
+                      </button>
+                      <button
+                        onClick={() => handleAchievementAction(a.id, 'dismiss')}
+                        disabled={confirmingId === a.id}
+                        className="text-[11px] text-ink-400 hover:text-red-400 disabled:opacity-50 transition-colors"
+                      >
+                        ✕ 刪除
+                      </button>
+                    </div>
                   </div>
-                )}
-
-                {achievements.some((a) => a.isConfirmed) && (
-                  <div className="space-y-2">
-                    <p className="text-[11px] font-medium text-sage-700">✓ 已確認（職涯成就總覽）</p>
-                    {achievements.filter((a) => a.isConfirmed).map((a) => (
-                      <div key={a.id} className="rounded-lg border border-sage-200 bg-sage-50 p-3">
-                        <p className="text-sm text-ink-800">{a.text}{a.metric && <span className="ml-1 font-semibold text-terra-600">（{a.metric}）</span>}</p>
-                        {a.company && <p className="text-[11px] text-ink-400 mt-0.5">📌 {a.company}</p>}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </>
+                ))}
+              </div>
             )}
           </div>
+
+          {/* 🎯 待確認技能 */}
+          {pendingSkills.length > 0 && (
+            <div className="rounded-xl border border-warm-200 bg-white p-4 space-y-3">
+              <p className="text-xs font-semibold text-ink-700">🎯 AI 推論的技能</p>
+              <div className="space-y-2">
+                {pendingSkills.map((s) => (
+                  <div key={s.id} className="rounded-lg border border-honey-200 bg-honey-50 p-3 flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-sm text-ink-800">{s.name} <span className="text-[11px] text-ink-400">（{s.category}）</span></p>
+                      <p className="text-[11px] text-ink-400 mt-0.5">{s.evidenceCount} 篇日誌佐證</p>
+                    </div>
+                    <button
+                      onClick={() => confirmPendingSkill(s.id)}
+                      disabled={skillActionId === s.id}
+                      className="shrink-0 rounded-full border border-terra-300 bg-white px-2.5 py-1 text-[11px] font-medium text-terra-600 hover:bg-terra-50 disabled:opacity-50 transition-colors"
+                    >
+                      {skillActionId === s.id ? '處理中…' : '✓ 確認正確'}
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <Link href="/dashboard/skills" className="inline-block text-[11px] text-terra-500 hover:text-terra-700 transition-colors">在技能庫查看完整清單 →</Link>
+            </div>
+          )}
 
           {/* 💡 職涯洞察 —— 行為模式觀察，跟成就是完全獨立的兩套資料，不進技能庫、不參與履歷生成 */}
           <div className="rounded-xl border border-warm-200 bg-white p-4 space-y-3">
@@ -1229,11 +1335,11 @@ export default function WorkJournalPage() {
 
             {insightsLoading ? (
               <p className="text-xs text-ink-400 py-4 text-center">載入中…</p>
-            ) : insights.length === 0 ? (
-              <p className="text-xs text-ink-400 py-6 text-center leading-relaxed">日誌累積得再多一些，這裡就會出現對你做事方式的觀察。</p>
+            ) : pendingInsights.length === 0 ? (
+              <p className="text-xs text-ink-400 py-6 text-center leading-relaxed">目前沒有待確認的觀察。日誌累積得再多一些，點「重新分析」看看有沒有新發現。</p>
             ) : (
               <div className="space-y-2">
-                {insights.map((ins) => {
+                {pendingInsights.map((ins) => {
                   const isExpanded = expandedInsight === ins.id
                   return (
                     <div key={ins.id} className={`rounded-lg border p-3 space-y-1.5 ${ins.isConfirmed ? 'border-sage-200 bg-sage-50' : 'border-honey-200 bg-honey-50'}`}>
@@ -1290,41 +1396,68 @@ export default function WorkJournalPage() {
             )}
           </div>
 
-          {/* Top tags */}
-          {achievementStats.topTags.length > 0 && (
-            <div className="rounded-xl border border-warm-200 bg-white p-4 space-y-3">
-              <p className="text-xs font-semibold text-ink-700">🏷 常用標籤</p>
-              <div className="flex flex-wrap gap-2">
-                {achievementStats.topTags.map(([tag, count]) => (
-                  <button key={tag} onClick={() => { setMainTab('list'); setFilterTag(tag) }}
-                    className="flex items-center gap-1.5 rounded-full border border-terra-200 bg-terra-50 px-3 py-1 text-xs text-terra-700 hover:bg-terra-100 transition-colors">
-                    {tag}
-                    <span className="font-bold text-terra-500">{count}</span>
-                  </button>
-                ))}
-              </div>
+        </div>
+        )
+      })()}
+
+      {/* ── 職涯成就 ── */}
+      {mainTab === 'career' && (() => {
+        const confirmedAchievements = achievements.filter((a) => a.isConfirmed)
+        const quantAchievements = confirmedAchievements.filter((a) => a.metric)
+        const qualAchievements = confirmedAchievements.filter((a) => !a.metric)
+        const confirmedInsights = insights.filter((i) => i.isConfirmed)
+        const nothingConfirmed = confirmedAchievements.length === 0 && achievementStats.starEntries.length === 0 && confirmedInsights.length === 0
+
+        const renderAchievementCard = (a: CareerAchievementItem) => (
+          <div key={a.id} className="group relative rounded-lg border border-warm-200 bg-white p-3 space-y-1.5">
+            <button
+              onClick={() => { const e = entries.find((x) => x.id === a.journalId); if (e) { setDetailEntry(e); setInterviewMatches(null); setView('detail') } }}
+              disabled={!a.journalId}
+              className="text-left w-full pr-10"
+            >
+              <p className="text-sm text-ink-800">{a.text}{a.metric && <span className="ml-1 font-semibold text-terra-600">（{a.metric}）</span>}</p>
+              <p className="text-[11px] text-ink-400 mt-1">
+                📓 {a.journalTitle || '日誌'}{a.journalDate && ` · ${fmtDate(a.journalDate)}`}{a.company && ` · ${a.company}`}
+              </p>
+              {a.journalExcerpt && (
+                <p className="text-[11px] text-ink-500 mt-1 bg-cream-50 border border-warm-100 rounded-lg px-2.5 py-1.5 line-clamp-3">「{a.journalExcerpt}」</p>
+              )}
+            </button>
+            <button
+              onClick={() => handleAchievementAction(a.id, 'dismiss')}
+              disabled={confirmingId === a.id}
+              className="absolute top-2 right-2 text-[11px] text-ink-300 opacity-0 group-hover:opacity-100 hover:text-red-400 disabled:opacity-50 transition-opacity"
+            >
+              ✕ 刪除
+            </button>
+          </div>
+        )
+
+        return (
+        <div className="space-y-5">
+          {nothingConfirmed && (
+            <div className="py-16 text-center text-ink-400 text-sm leading-relaxed">
+              還沒有已確認的成就。到「待確認」頁面審核 AI 擷取的結果，確認後會出現在這裡。
             </div>
           )}
 
-          {/* Top companies */}
-          {achievementStats.topCompanies.length > 0 && (
-            <div className="rounded-xl border border-warm-200 bg-white p-4 space-y-3">
-              <p className="text-xs font-semibold text-ink-700">🏢 記錄最多的公司</p>
-              <div className="space-y-2">
-                {achievementStats.topCompanies.map(([company, count]) => (
-                  <div key={company} className="flex items-center gap-3">
-                    <span className="text-sm text-ink-700 flex-1">{company}</span>
-                    <div className="flex-1 max-w-[100px] h-1.5 bg-warm-200 rounded-full overflow-hidden">
-                      <div className="h-full bg-terra-400 rounded-full" style={{ width: `${(count / achievementStats.topCompanies[0][1]) * 100}%` }} />
-                    </div>
-                    <span className="text-xs text-ink-400 w-8 text-right">{count} 篇</span>
-                  </div>
-                ))}
-              </div>
+          {/* 📊 量化成就 */}
+          {quantAchievements.length > 0 && (
+            <div className="space-y-3">
+              <p className="text-xs font-semibold text-ink-700">📊 量化成就</p>
+              <div className="space-y-2">{quantAchievements.map(renderAchievementCard)}</div>
             </div>
           )}
 
-          {/* STAR highlights */}
+          {/* 📝 質化成就 */}
+          {qualAchievements.length > 0 && (
+            <div className="space-y-3">
+              <p className="text-xs font-semibold text-ink-700">📝 質化成就</p>
+              <div className="space-y-2">{qualAchievements.map(renderAchievementCard)}</div>
+            </div>
+          )}
+
+          {/* ⭐ STAR 成就精選 */}
           {achievementStats.starEntries.length > 0 && (
             <div className="space-y-3">
               <p className="text-xs font-semibold text-ink-700">⭐ STAR 成就精選</p>
@@ -1343,11 +1476,52 @@ export default function WorkJournalPage() {
             </div>
           )}
 
-          {achievementStats.total === 0 && (
-            <div className="py-20 text-center text-ink-400">開始記錄你的工作成就吧！</div>
+          {/* 💡 觀察（職涯洞察）—— 唯讀顯示，不提供動作 */}
+          {confirmedInsights.length > 0 && (
+            <div className="space-y-3">
+              <p className="text-xs font-semibold text-ink-700">💡 觀察</p>
+              <div className="space-y-2">
+                {confirmedInsights.map((ins) => {
+                  const isExpanded = expandedInsight === ins.id
+                  return (
+                    <div key={ins.id} className="rounded-lg border border-sage-200 bg-sage-50 p-3 space-y-1.5">
+                      <div className="flex items-start gap-2">
+                        <span className="text-[10px] shrink-0 mt-0.5">🟢</span>
+                        <p className="text-sm text-ink-800 flex-1">{ins.text}</p>
+                      </div>
+                      <div className="flex items-center gap-3 pl-5">
+                        <button
+                          onClick={() => setExpandedInsight(isExpanded ? null : ins.id)}
+                          className="text-[11px] text-ink-400 hover:text-ink-600 transition-colors"
+                        >
+                          來自 {ins.evidenceCount} 篇日誌 {isExpanded ? '▲' : '▼'}
+                        </button>
+                        <button
+                          onClick={() => copyInsight(ins.text)}
+                          className="text-[11px] text-ink-400 hover:text-ink-600 transition-colors"
+                        >
+                          複製文字
+                        </button>
+                      </div>
+                      {isExpanded && (
+                        <div className="pl-5 space-y-1.5 pt-1">
+                          {ins.evidence.map((e) => (
+                            <div key={e.journalId} className="text-xs bg-white border border-warm-100 rounded-lg px-3 py-2">
+                              <p className="text-ink-400 mb-0.5">· {e.journalTitle || e.journalId}{e.journalDate && ` · ${fmtDate(e.journalDate)}`}</p>
+                              <p className="text-ink-600">「{e.excerpt}」</p>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
           )}
         </div>
-      )}
+        )
+      })()}
 
       {/* Lightbox */}
       {lightboxUrl && (

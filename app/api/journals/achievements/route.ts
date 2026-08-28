@@ -2,21 +2,24 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireAuth } from '@/lib/auth-guard'
 import { prisma } from '@/lib/prisma'
 
-// 列出使用者所有 AI 萃取的成就（含待確認與已確認），前端自行分區顯示
+// 列出使用者所有 AI 萃取的成就（含待確認與已確認，不含已刪除），前端自行分區顯示
 export async function GET() {
   const { session, error: authError } = await requireAuth()
   if (authError) return authError
   const userId = session!.user.id as string
 
   const achievements = await prisma.careerAchievement.findMany({
-    where: { userId },
+    where: { userId, isDismissed: false },
     orderBy: { createdAt: 'desc' },
+    include: { journal: { select: { id: true, title: true, date: true } } },
   })
 
   return NextResponse.json({
     achievements: achievements.map((a) => ({
       id: a.id,
       journalId: a.journalId,
+      journalTitle: a.journal?.title ?? '',
+      journalDate: a.journal?.date ?? null,
       company: a.company,
       text: a.text,
       metric: a.metric,
@@ -27,15 +30,15 @@ export async function GET() {
   })
 }
 
-// 切換單筆成就的確認狀態——只有 isConfirmed=true 的才會出現在「職涯成就總覽」
+// 確認（is_confirmed=true）或刪除（is_dismissed=true，軟刪除）一筆成就
 export async function PATCH(req: NextRequest) {
   const { session, error: authError } = await requireAuth()
   if (authError) return authError
   const userId = session!.user.id as string
 
-  const { id, isConfirmed } = await req.json() as { id: string; isConfirmed: boolean }
-  if (!id || typeof isConfirmed !== 'boolean') {
-    return NextResponse.json({ error: '缺少 id 或 isConfirmed' }, { status: 400 })
+  const { id, action } = await req.json() as { id: string; action: 'confirm' | 'dismiss' }
+  if (!id || (action !== 'confirm' && action !== 'dismiss')) {
+    return NextResponse.json({ error: '缺少 id 或 action' }, { status: 400 })
   }
 
   const owns = await prisma.careerAchievement.findFirst({ where: { id, userId }, select: { id: true } })
@@ -43,8 +46,7 @@ export async function PATCH(req: NextRequest) {
 
   const updated = await prisma.careerAchievement.update({
     where: { id },
-    data: { isConfirmed },
+    data: action === 'confirm' ? { isConfirmed: true } : { isDismissed: true },
   })
-
-  return NextResponse.json({ id: updated.id, isConfirmed: updated.isConfirmed })
+  return NextResponse.json({ id: updated.id, isConfirmed: updated.isConfirmed, isDismissed: updated.isDismissed })
 }
