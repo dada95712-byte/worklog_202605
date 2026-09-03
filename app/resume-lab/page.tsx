@@ -495,6 +495,8 @@ export default function CareerProfilePage() {
       const res = await fetch('/api/resume/parse', { method: 'POST', body: form })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? '解析失敗')
+      setEditBanner(data.warning ?? '')
+      setReviewFields([])
       goToEditor({ ...EMPTY_RESUME, ...data }, data.name || '上傳履歷', 'upload')
     } catch (err) { setResumeError((err as Error).message) }
     finally { setParsing(false) }

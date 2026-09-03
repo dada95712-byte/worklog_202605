@@ -2,28 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { callAI } from '@/lib/ai-client'
 import { extractJSON } from '@/lib/extract-json'
 import { requireAuth } from '@/lib/auth-guard'
-
-async function parsePDF(buffer: Buffer): Promise<string> {
-  const PDFParser = (await import('pdf2json')).default
-  return new Promise((resolve, reject) => {
-    const parser = new PDFParser()
-    parser.on('pdfParser_dataReady', (pdfData: { Pages: { Texts: { R: { T: string }[] }[] }[] }) => {
-      const text = pdfData.Pages
-        .flatMap(page => page.Texts)
-        .map(t => decodeURIComponent(t.R.map((r) => r.T).join('')))
-        .join(' ')
-      resolve(text)
-    })
-    parser.on('pdfParser_dataError', reject)
-    parser.parseBuffer(buffer)
-  })
-}
-
-async function parseDOCX(buffer: Buffer): Promise<string> {
-  const mammoth = await import('mammoth')
-  const result = await mammoth.extractRawText({ buffer })
-  return result.value
-}
+import { parsePDF, parseDOCX, detectGarbledText } from '@/lib/resume-parse'
 
 export async function POST(req: NextRequest) {
   const { error: authError } = await requireAuth()
@@ -46,8 +25,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: '僅支援 PDF 或 DOCX 格式' }, { status: 400 })
     }
 
-    const prompt = `Parse the following resume content. Auto-detect the language (Traditional Chinese or English) and reply in the SAME language as the resume.
+    const garbled = detectGarbledText(rawText)
 
+    const prompt = `Parse the following resume content. Auto-detect the language (Traditional Chinese or English) and reply in the SAME language as the resume.
+${garbled ? '\nWARNING: text extraction quality is poor for this file — some Latin letters or digits may show up as garbled symbols (e.g. ■▼▲►◄↑↓). If a field would only contain such garbled symbols or clearly broken text, leave it out entirely rather than copying the garbage.\n' : ''}
 Return ONLY a JSON object with these fields:
 - name: full name (string)
 - email: email address (string)
@@ -73,6 +54,9 @@ Return ONLY valid JSON, no other text.`
       experiences: Array.isArray(parsed.experiences) ? parsed.experiences : [],
       education: Array.isArray(parsed.education) ? parsed.education : [],
       rawText,
+      warning: garbled
+        ? '這份檔案的部分內容（通常是英文字母或數字，例如電話、Email、英文技能/工具名稱）因原始檔案的字型嵌入問題無法正確辨識，已略過看起來像亂碼的內容，請仔細檢查並手動補上缺漏的部分。'
+        : null,
     })
   } catch (err) {
     console.error('Resume parse error:', err)

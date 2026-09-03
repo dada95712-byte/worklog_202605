@@ -2,28 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { callAI } from '@/lib/ai-client'
 import { extractJSON } from '@/lib/extract-json'
 import { requireAuth } from '@/lib/auth-guard'
-
-async function parsePDF(buffer: Buffer): Promise<string> {
-  const PDFParser = (await import('pdf2json')).default
-  return new Promise((resolve, reject) => {
-    const parser = new PDFParser()
-    parser.on('pdfParser_dataReady', (pdfData: { Pages: { Texts: { R: { T: string }[] }[] }[] }) => {
-      const text = pdfData.Pages
-        .flatMap(p => p.Texts)
-        .map(t => decodeURIComponent(t.R.map((r) => r.T).join('')))
-        .join(' ')
-      resolve(text)
-    })
-    parser.on('pdfParser_dataError', reject)
-    parser.parseBuffer(buffer)
-  })
-}
-
-async function parseDOCX(buffer: Buffer): Promise<string> {
-  const mammoth = await import('mammoth')
-  const result = await mammoth.extractRawText({ buffer })
-  return result.value
-}
+import { parsePDF, parseDOCX, detectGarbledText } from '@/lib/resume-parse'
 
 export async function POST(req: NextRequest) {
   const { error: authError } = await requireAuth()
@@ -52,8 +31,13 @@ export async function POST(req: NextRequest) {
 
     if (!rawText.trim()) return NextResponse.json({ error: '無法讀取檔案內容，請確認檔案未加密' }, { status: 400 })
 
+    // 部分 PDF（常見於某些線上履歷產生器）的英文/數字用自繪字形嵌入，沒有正確字元對應表，
+    // 擷取工具只能猜測，猜錯會產生方塊/箭頭等符號。中文字通常不受影響。
+    // 偵測到就額外提醒 AI 不要照抄亂碼，並回傳警告讓使用者知道要仔細檢查對應欄位。
+    const garbled = detectGarbledText(rawText)
+
     const prompt = `你是履歷解析專家，能夠處理各種格式與範本的履歷。
-請從以下履歷原文中，擷取所有資訊並對應到指定欄位。
+請從以下履歷原文中，擷取所有資訊並對應到指定欄位。${garbled ? '\n\n⚠️ 注意：這份文件的原文擷取品質不佳，部分英文字母或數字可能顯示為方塊、箭頭等亂碼符號（例如 ■▼▲►◄↑↓ 等）。任何欄位如果對應到的內容包含這類亂碼符號、或明顯不成字詞，請填 null，絕對不要把亂碼符號照抄進欄位裡。' : ''}
 
 履歷原文：
 <resume>${rawText.slice(0, 4000)}</resume>
@@ -104,7 +88,12 @@ export async function POST(req: NextRequest) {
 
     const response = await callAI(prompt)
     const result = extractJSON(response)
-    return NextResponse.json({ parsed: result })
+    return NextResponse.json({
+      parsed: result,
+      warning: garbled
+        ? '這份 PDF 的部分內容（通常是英文字母或數字，例如電話、Email、英文技能/工具名稱）因原始檔案的字型嵌入問題無法正確辨識，AI 已略過看起來像亂碼的內容。請在下方確認清單中仔細檢查這類欄位，缺漏的部分需要手動補上。'
+        : null,
+    })
   } catch (err) {
     console.error('Import resume error:', err)
     return NextResponse.json({ error: '解析失敗，請再試一次' }, { status: 500 })

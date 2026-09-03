@@ -337,6 +337,7 @@ export default function ProfileLibraryPage() {
   const [importStep,     setImportStep]     = useState(0)
   const [importParsed,   setImportParsed]   = useState<ParsedResume | null>(null)
   const [importAccepted, setImportAccepted] = useState<Record<string, boolean[]>>({})
+  const [importWarning,  setImportWarning]  = useState<string | null>(null)
   const [toast,          setToast]          = useState<string | null>(null)
   const importFileRef = useRef<HTMLInputElement>(null)
 
@@ -351,35 +352,43 @@ export default function ProfileLibraryPage() {
   // ── Load from the database ──
   const [loading, setLoading] = useState(true)
   const [authRequired, setAuthRequired] = useState(false)
+  const [loadError, setLoadError] = useState(false)
+
+  // 個人檔案讀取失敗時獨立用 loadError 標示（不能借用 saveStatus）——
+  // 這裡代表的是「資料還沒載入」，不是「儲存失敗」，兩者語意不同也不該共用同一個狀態：
+  // 如果誤用 saveStatus，畫面會照樣渲染空白表單，使用者一旦按下「儲存所有變更」
+  // 就會用空資料覆蓋、刪除他原本已存在資料庫裡的真實資料。
+  async function loadProfile() {
+    setLoading(true); setLoadError(false)
+    try {
+      const res = await fetch('/api/profile')
+      if (res.status === 401) { setAuthRequired(true); return }
+      if (!res.ok) throw new Error('load failed')
+      const data = await res.json()
+      setBasic({ ...EMPTY_BASIC, ...data.basic })
+      setEducations(data.educations ?? [])
+      setExperiences(data.experiences ?? [])
+      setInternships(data.internships ?? [])
+      setProjects(data.projects ?? [])
+      setLanguages(data.languages ?? [])
+      const loaded = (data.skillMap ?? {}) as Record<string, string[]>
+      setSkillMap(Object.fromEntries(SKILL_CATS.map(c => [c, loaded[c] ?? []])))
+      setCertificates(data.certificates ?? [])
+      setActivities(data.activities ?? [])
+      setConferences(data.conferences ?? [])
+      setSummaryZh(data.summaryZh ?? '')
+      setSummaryEn(data.summaryEn ?? '')
+      setAttachments(data.attachments ?? [])
+      setCustomBlocks(data.customBlocks ?? [])
+    } catch {
+      setLoadError(true)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   useEffect(() => {
-    (async () => {
-      try {
-        const res = await fetch('/api/profile')
-        if (res.status === 401) { setAuthRequired(true); return }
-        if (!res.ok) throw new Error('load failed')
-        const data = await res.json()
-        setBasic({ ...EMPTY_BASIC, ...data.basic })
-        setEducations(data.educations ?? [])
-        setExperiences(data.experiences ?? [])
-        setInternships(data.internships ?? [])
-        setProjects(data.projects ?? [])
-        setLanguages(data.languages ?? [])
-        const loaded = (data.skillMap ?? {}) as Record<string, string[]>
-        setSkillMap(Object.fromEntries(SKILL_CATS.map(c => [c, loaded[c] ?? []])))
-        setCertificates(data.certificates ?? [])
-        setActivities(data.activities ?? [])
-        setConferences(data.conferences ?? [])
-        setSummaryZh(data.summaryZh ?? '')
-        setSummaryEn(data.summaryEn ?? '')
-        setAttachments(data.attachments ?? [])
-        setCustomBlocks(data.customBlocks ?? [])
-      } catch {
-        setSaveStatus('failed')
-      } finally {
-        setLoading(false)
-      }
-    })()
+    loadProfile()
   }, [])
 
   // ── Completeness ──
@@ -512,6 +521,7 @@ export default function ProfileLibraryPage() {
       if (!res.ok || !data.parsed) { alert(data.error ?? '解析失敗，請再試一次'); return }
       const p = data.parsed as ParsedResume
       setImportParsed(p)
+      setImportWarning(data.warning ?? null)
       // build per-item accepted map (all true by default)
       const acc: Record<string, boolean[]> = {}
       if (p.basic && Object.values(p.basic).some(v => v)) acc['basic'] = [true]
@@ -632,7 +642,7 @@ export default function ProfileLibraryPage() {
     if (importAccepted['summary_zh']?.[0] && p.summary_zh) { count++; setSummaryZh(p.summary_zh); save('profile-summary-zh', p.summary_zh) }
     if (importAccepted['summary_en']?.[0] && p.summary_en) { count++; setSummaryEn(p.summary_en); save('profile-summary-en', p.summary_en) }
 
-    setImportParsed(null); setImportAccepted({})
+    setImportParsed(null); setImportAccepted({}); setImportWarning(null)
     showToast(`✓ 成功匯入 ${count} 筆資料，請逐一確認內容正確性`)
   }
 
@@ -905,10 +915,15 @@ export default function ProfileLibraryPage() {
         <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl max-h-[85vh] flex flex-col">
           <div className="flex items-center justify-between mb-2 shrink-0">
             <h3 className="text-base font-semibold text-ink-800">AI 解析完成，請確認以下資訊</h3>
-            <button type="button" onClick={() => { setImportParsed(null); setImportAccepted({}) }}
+            <button type="button" onClick={() => { setImportParsed(null); setImportAccepted({}); setImportWarning(null) }}
               className="rounded-lg border border-warm-200 bg-cream-50 px-2.5 py-1 text-sm text-ink-400 hover:text-ink-600 transition-colors">✕</button>
           </div>
           <p className="text-xs text-ink-500 mb-3 shrink-0">所有資料來自你的履歷原文，請確認正確性後再匯入</p>
+          {importWarning && (
+            <p className="mb-3 rounded-xl border border-orange-200 bg-orange-50 px-3 py-2 text-xs text-orange-700 leading-relaxed shrink-0">
+              ⚠️ {importWarning}
+            </p>
+          )}
           <div className="flex-1 overflow-y-auto space-y-1.5 pr-1">
             {items.length === 0 && <p className="text-sm text-ink-400 py-4 text-center">未解析到可匯入的資料</p>}
             {items.map(item => {
@@ -936,7 +951,7 @@ export default function ProfileLibraryPage() {
             ⚠ 請確認以上資訊確實來自你的履歷，AI 解析可能有誤，確認後才會儲存
           </p>
           <div className="flex justify-end gap-2 mt-3 pt-3 border-t border-warm-100 shrink-0">
-            <button type="button" onClick={() => { setImportParsed(null); setImportAccepted({}) }}
+            <button type="button" onClick={() => { setImportParsed(null); setImportAccepted({}); setImportWarning(null) }}
               className="rounded-xl border border-warm-200 bg-cream-100 px-4 py-2 text-sm text-ink-600 hover:bg-cream-200 transition-colors">取消</button>
             <button type="button" onClick={applyImport} disabled={accepted === 0}
               className="rounded-xl bg-terra-500 px-5 py-2 text-sm font-semibold text-white hover:bg-terra-700 transition-colors disabled:opacity-50 shadow-[var(--shadow-warm-sm)]">
@@ -968,6 +983,20 @@ export default function ProfileLibraryPage() {
           className="rounded-xl bg-terra-500 px-5 py-2.5 text-sm font-semibold text-white hover:bg-terra-700 transition-colors shadow-[var(--shadow-warm-sm)]">
           前往登入 →
         </a>
+      </div>
+    )
+  }
+
+  if (loadError) {
+    return (
+      <div className="flex min-h-full flex-col items-center justify-center gap-4 py-24 text-center px-4">
+        <p className="text-2xl">⚠️</p>
+        <p className="font-semibold text-ink-700">個人檔案資料載入失敗</p>
+        <p className="text-sm text-ink-400 max-w-sm">可能是網路不穩或伺服器暫時無法回應。為了避免用空白資料覆蓋你已經存在的內容，這裡先不會顯示編輯畫面，請重試一次。</p>
+        <button onClick={loadProfile}
+          className="rounded-xl bg-terra-500 px-5 py-2.5 text-sm font-semibold text-white hover:bg-terra-700 transition-colors shadow-[var(--shadow-warm-sm)]">
+          重新載入
+        </button>
       </div>
     )
   }
