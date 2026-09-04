@@ -1,5 +1,8 @@
 // 履歷檔案文字擷取共用邏輯（PDF/DOCX），供個人檔案庫匯入與 Resume Lab 上傳共用。
 
+import { callAI } from '@/lib/ai-client'
+import { extractJSON } from '@/lib/extract-json'
+
 export async function parsePDF(buffer: Buffer): Promise<string> {
   const PDFParser = (await import('pdf2json')).default
   return new Promise((resolve, reject) => {
@@ -31,4 +34,30 @@ const GARBLED_GLYPH_PATTERN = /[■-◿←-⇿]/g
 export function detectGarbledText(text: string): boolean {
   const matches = text.match(GARBLED_GLYPH_PATTERN)
   return (matches?.length ?? 0) >= 3
+}
+
+// openrouter/free 會自動路由到品質差異很大的免費模型：實測對同一份履歷連續呼叫 10 次，
+// 拿到完整結果的只有 4 次，3 次直接回傳空白，1 次明顯抓漏（學歷 0 筆），1 次甚至被路由到
+// 內容安全分類模型（只回「User Safety: safe」，根本沒做解析）。這些情況都不會觸發
+// ai-client.ts 既有的 429/空白重試機制——因為回應本身是「有效但太糟」的 JSON，不是真的失敗。
+// 這裡另外加一層「結果太空就重試」的判斷：換一次呼叫，路由通常會換到不同模型，
+// 實測 3 次內幾乎都能拿到可用結果。
+export async function callAIWithQualityRetry<T>(
+  prompt: string,
+  isGoodEnough: (parsed: T) => boolean,
+  maxAttempts = 2,
+): Promise<T> {
+  let lastParsed: T | null = null
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    try {
+      const raw = await callAI(prompt)
+      const parsed = extractJSON<T>(raw)
+      if (isGoodEnough(parsed)) return parsed
+      lastParsed = parsed
+    } catch {
+      // 這次沒解析出有效 JSON（例如整個回應根本不是 JSON），換下一次嘗試
+    }
+  }
+  if (lastParsed) return lastParsed
+  throw new Error('AI 多次嘗試後仍無法解析出有效內容，請稍後再試')
 }

@@ -1,8 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { callAI } from '@/lib/ai-client'
-import { extractJSON } from '@/lib/extract-json'
 import { requireAuth } from '@/lib/auth-guard'
-import { parsePDF, parseDOCX, detectGarbledText } from '@/lib/resume-parse'
+import { parsePDF, parseDOCX, detectGarbledText, callAIWithQualityRetry } from '@/lib/resume-parse'
+
+interface ParsedResume {
+  name?: string; email?: string; phone?: string
+  skills?: unknown[]; experiences?: unknown[]; education?: unknown[]
+}
+
+// 品質重試最差情況下要打好幾次 AI，拉長到接近平台預設逾時時間，明確拉高上限避免被平台中斷
+export const maxDuration = 60
 
 export async function POST(req: NextRequest) {
   const { error: authError } = await requireAuth()
@@ -42,9 +48,15 @@ ${rawText.slice(0, 4000)}
 
 Return ONLY valid JSON, no other text.`
 
-    const aiResponse = await callAI(prompt)
-    let parsed: Record<string, unknown> = {}
-    try { parsed = extractJSON<Record<string, unknown>>(aiResponse) } catch { parsed = {} }
+    // openrouter/free 會自動路由到品質差異很大的免費模型，偶爾會回傳明顯太空的結果
+    // （甚至路由到完全不適合這個任務的模型）；太空就自動換下一次呼叫重試。
+    let parsed: ParsedResume = {}
+    try {
+      parsed = await callAIWithQualityRetry<ParsedResume>(
+        prompt,
+        (p) => (p.experiences?.length ?? 0) > 0 || (p.education?.length ?? 0) > 0,
+      )
+    } catch { parsed = {} }
 
     return NextResponse.json({
       name: parsed.name ?? '',

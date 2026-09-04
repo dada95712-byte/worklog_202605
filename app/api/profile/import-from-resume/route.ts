@@ -1,8 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { callAI } from '@/lib/ai-client'
-import { extractJSON } from '@/lib/extract-json'
 import { requireAuth } from '@/lib/auth-guard'
-import { parsePDF, parseDOCX, detectGarbledText } from '@/lib/resume-parse'
+import { parsePDF, parseDOCX, detectGarbledText, callAIWithQualityRetry } from '@/lib/resume-parse'
+
+interface ParsedResume {
+  education?: unknown[]
+  experience?: unknown[]
+  [key: string]: unknown
+}
+
+// 品質重試最差情況下要打好幾次 AI，拉長到接近平台預設逾時時間，明確拉高上限避免被平台中斷
+export const maxDuration = 60
 
 export async function POST(req: NextRequest) {
   const { error: authError } = await requireAuth()
@@ -86,8 +93,12 @@ export async function POST(req: NextRequest) {
 - 不得補充、推論或創造任何原文沒有的內容
 - 只回傳 JSON，不要其他文字`
 
-    const response = await callAI(prompt)
-    const result = extractJSON(response)
+    // openrouter/free 會自動路由到品質差異很大的免費模型，偶爾會回傳明顯太空的結果
+    // （甚至路由到完全不適合這個任務的模型）；太空就自動換下一次呼叫重試。
+    const result = await callAIWithQualityRetry<ParsedResume>(
+      prompt,
+      (p) => (p.education?.length ?? 0) > 0 || (p.experience?.length ?? 0) > 0,
+    )
     return NextResponse.json({
       parsed: result,
       warning: garbled
