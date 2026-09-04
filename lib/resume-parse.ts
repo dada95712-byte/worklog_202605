@@ -42,13 +42,19 @@ export function detectGarbledText(text: string): boolean {
 // ai-client.ts 既有的 429/空白重試機制——因為回應本身是「有效但太糟」的 JSON，不是真的失敗。
 // 這裡另外加一層「結果太空就重試」的判斷：換一次呼叫，路由通常會換到不同模型，
 // 實測 3 次內幾乎都能拿到可用結果。
+// deadlineMs 是這個函式自己的時間預算（非 HTTP 逾時）：即使還有 maxAttempts 額度，
+// 只要已經接近預算就不再啟動下一次嘗試，避免整個 serverless function 撞到平台自己的
+// 執行時間上限被砍斷（那樣會直接 504，比「拿到普通結果」更糟）。
 export async function callAIWithQualityRetry<T>(
   prompt: string,
   isGoodEnough: (parsed: T) => boolean,
   maxAttempts = 2,
+  deadlineMs = 45000,
 ): Promise<T> {
+  const deadline = Date.now() + deadlineMs
   let lastParsed: T | null = null
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    if (attempt > 0 && Date.now() >= deadline) break
     try {
       const raw = await callAI(prompt)
       const parsed = extractJSON<T>(raw)

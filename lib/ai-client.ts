@@ -39,7 +39,13 @@ function getClient(): OpenAI {
   const key = process.env.OPENROUTER_API_KEY
   if (!key) throw new Error('OPENROUTER_API_KEY is not set')
   if (!_client) {
-    _client = new OpenAI({ apiKey: key, baseURL: 'https://openrouter.ai/api/v1' })
+    // openai SDK 預設沒設 timeout 會等到 10 分鐘，免費模型偶爾會掛住不回應，
+    // 導致整個 serverless function 撞到平台自己的執行時間上限被砍斷（504），
+    // complete() 的 429 重試/fallback 邏輯完全來不及介入。明確設短一點的
+    // timeout 讓卡住的呼叫快速失敗、把機會讓給下一次重試或備援模型。
+    // maxRetries 設 0 是因為 complete() 已經自己做 429 重試，避免兩層重試疊加
+    // 讓總等待時間更難預期。
+    _client = new OpenAI({ apiKey: key, baseURL: 'https://openrouter.ai/api/v1', timeout: 15000, maxRetries: 0 })
   }
   return _client
 }
