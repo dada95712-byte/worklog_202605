@@ -3,6 +3,9 @@ import { requireAuth } from '@/lib/auth-guard'
 import { prisma } from '@/lib/prisma'
 import { syncManualSkills } from '@/lib/skill-sync'
 
+// PUT 會呼叫 syncManualSkills，技能一多正式環境網路延遲下可能需要比預設更長時間
+export const maxDuration = 60
+
 interface SkillIn { name: string; category: string }
 
 // 回傳使用者所有技能（含已確認與AI建議待確認），每筆附證據清單與篇數

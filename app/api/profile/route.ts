@@ -3,6 +3,10 @@ import { requireAuth } from '@/lib/auth-guard'
 import { prisma } from '@/lib/prisma'
 import { syncManualSkills, getSkillMap } from '@/lib/skill-sync'
 
+// PUT 會在同一個請求裡整份重寫個人檔案（技能同步 + 十幾張表的 delete+createMany），
+// 正式環境對資料庫的網路延遲比本機測試高，明確拉高執行時間上限避免被平台中斷
+export const maxDuration = 60
+
 interface BasicInfo {
   nameZh: string; nameEn: string
   email: string; phone: string; address: string
@@ -149,7 +153,7 @@ export async function PUT(req: NextRequest) {
       prisma.profileCustom.createMany({
         data: customBlocks.map((c, i) => ({ userId, sortOrder: i, sectionTitle: c.sectionTitle, content: c.content })),
       }),
-    ])
+    ], { timeout: 20000 })
 
     return NextResponse.json({ ok: true })
   } catch (err) {
