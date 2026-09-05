@@ -23,6 +23,14 @@ interface CareerAchievementItem {
 
 interface PendingSkillItem { id: string; name: string; category: string; evidenceCount: number }
 
+interface CompanyGroup {
+  companyName: string
+  entries: JournalEntry[]
+  count: number
+  firstDate: string
+  lastDate: string
+}
+
 interface CareerInsightEvidenceItem { journalId: string; journalTitle: string; journalDate: string | null; excerpt: string }
 interface CareerInsightItem {
   id: string
@@ -107,6 +115,36 @@ function relativeTime(iso: string) {
 }
 function monthLabel(iso: string) {
   const d = new Date(iso); return `${d.getFullYear()}年 ${d.getMonth()+1}月`
+}
+function yearMonth(iso: string) {
+  const d = new Date(iso); return `${d.getFullYear()}.${(d.getMonth()+1).toString().padStart(2,'0')}`
+}
+// work_journals 沒有在職期間欄位，只能從日誌日期推導「記錄期間」——
+// 不去 join profile_experience 猜真正的在職期間，公司名稱字串比對不可靠，
+// 比對失敗會產生錯誤的期間，寧可誠實標示記錄期間也不要顯示可能錯誤的資訊
+function periodLabel(firstDate: string, lastDate: string) {
+  const first = yearMonth(firstDate); const last = yearMonth(lastDate)
+  return first === last ? last : `${first} – ${last}`
+}
+function groupEntriesByMonth(entries: JournalEntry[]): [string, JournalEntry[]][] {
+  const groups: Record<string, JournalEntry[]> = {}
+  ;[...entries].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).forEach((e) => {
+    const key = monthLabel(e.date)
+    if (!groups[key]) groups[key] = []
+    groups[key].push(e)
+  })
+  return Object.entries(groups)
+}
+// 成就密度條：下限 8% 讓只有 1 篇的公司也看得見，上限在 15 篇封頂
+const barWidth = (count: number) => `${Math.max(8, Math.min(count / 15, 1) * 100)}%`
+// 四級色階全部使用 @theme 既有 token（warm-300/honey-500/terra-400/terra-700），
+// 顏色不是唯一編碼——長度、數字、文字標籤一起做工，同一家公司只有 2-4 篇時
+// 光靠顏色深淺分不出層級
+function densityTier(count: number) {
+  if (count >= 15) return { bar: 'bg-terra-700', label: '主力戰場', chip: 'bg-terra-700 text-white border-terra-700' }
+  if (count >= 8)  return { bar: 'bg-terra-400', label: '扎實',     chip: 'bg-terra-50 text-terra-700 border-terra-400' }
+  if (count >= 4)  return { bar: 'bg-honey-500', label: '穩定累積', chip: 'bg-honey-50 text-clay-700 border-honey-500' }
+  return               { bar: 'bg-warm-300',  label: '起步',     chip: 'bg-cream-200 text-ink-500 border-warm-300' }
 }
 function emptyEntry(): JournalEntry {
   return { id: '', title: '', company: '', jobTitle: '', date: todayStr(), template: 'star', content: '', situation: '', task: '', action: '', result: '', tags: [], images: [], createdAt: '' }
@@ -601,31 +639,62 @@ export default function WorkJournalPage() {
     return r
   }, [entries, search, filterCompany, filterTag, sortBy])
 
-  // Timeline grouped by month
-  const timelineGroups = useMemo(() => {
+  // 職涯時間軸：以公司分組（取代原本依月份分組），公司依最近一篇日誌的日期排序，
+  // 「未指定公司」（company 為空）永遠排最後
+  const companyGroups = useMemo<CompanyGroup[]>(() => {
     const groups: Record<string, JournalEntry[]> = {}
-    ;[...entries].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).forEach((e) => {
-      const key = monthLabel(e.date)
+    entries.forEach((e) => {
+      const key = e.company?.trim() ? e.company.trim() : '未指定公司'
       if (!groups[key]) groups[key] = []
       groups[key].push(e)
     })
-    return Object.entries(groups)
+    const result: CompanyGroup[] = Object.entries(groups).map(([companyName, list]) => {
+      const sorted = [...list].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+      return {
+        companyName,
+        entries: sorted,
+        count: sorted.length,
+        firstDate: sorted[sorted.length - 1].date,
+        lastDate: sorted[0].date,
+      }
+    })
+    result.sort((a, b) => {
+      if (a.companyName === '未指定公司') return 1
+      if (b.companyName === '未指定公司') return -1
+      return new Date(b.lastDate).getTime() - new Date(a.lastDate).getTime()
+    })
+    return result
   }, [entries])
+
+  // 展開狀態：預設全部收合，只有一家公司時預設展開（只在資料第一次載入時決定一次，
+  // 之後不再覆蓋使用者手動展開/收合的選擇）
+  const [expandedCompanies, setExpandedCompanies] = useState<Set<string>>(new Set())
+  const didInitExpandRef = useRef(false)
+  useEffect(() => {
+    if (didInitExpandRef.current || companyGroups.length === 0) return
+    didInitExpandRef.current = true
+    if (companyGroups.length === 1) setExpandedCompanies(new Set([companyGroups[0].companyName]))
+  }, [companyGroups])
+
+  function toggleCompanyExpanded(name: string) {
+    setExpandedCompanies((prev) => {
+      const next = new Set(prev)
+      if (next.has(name)) next.delete(name); else next.add(name)
+      return next
+    })
+  }
 
   // Achievements stats
   const achievementStats = useMemo(() => {
     const tagCount: Record<string, number> = {}
-    const companyCount: Record<string, number> = {}
     let starCount = 0
     entries.forEach((e) => {
       if (e.situation || e.task || e.action || e.result) starCount++
       ;(e.tags ?? []).forEach((t) => { tagCount[t] = (tagCount[t] ?? 0) + 1 })
-      if (e.company) companyCount[e.company] = (companyCount[e.company] ?? 0) + 1
     })
     const topTags = Object.entries(tagCount).sort((a, b) => b[1] - a[1]).slice(0, 10)
-    const topCompanies = Object.entries(companyCount).sort((a, b) => b[1] - a[1]).slice(0, 5)
     const starEntries = entries.filter((e) => e.situation && e.task && e.action && e.result).slice(0, 5)
-    return { total: entries.length, starCount, topTags, topCompanies, starEntries }
+    return { total: entries.length, starCount, topTags, starEntries }
   }, [entries])
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -1142,40 +1211,76 @@ export default function WorkJournalPage() {
         </div>
       )}
 
-      {/* ── 時間軸 ── */}
+      {/* ── 時間軸（以公司分組） ── */}
       {mainTab === 'timeline' && (
         <div className="space-y-6">
-          {timelineGroups.length === 0 ? (
-            <div className="py-20 text-center text-ink-400">尚無日誌記錄</div>
-          ) : timelineGroups.map(([month, monthEntries]) => (
-            <div key={month} className="relative">
-              <div className="flex items-center gap-3 mb-3">
-                <div className="h-3 w-3 rounded-full bg-terra-400 shrink-0" />
-                <p className="text-sm font-semibold text-ink-700">{month}</p>
-                <div className="flex-1 h-px bg-warm-200" />
-                <span className="text-xs text-ink-400">{monthEntries.length} 篇</span>
-              </div>
-              <div className="ml-6 border-l-2 border-warm-200 pl-4 space-y-3">
-                {monthEntries.map((e) => (
-                  <div key={e.id}
-                    onClick={() => { setDetailEntry(e); setInterviewMatches(null); setView('detail') }}
-                    className="cursor-pointer rounded-xl border border-warm-200 bg-white p-3 hover:border-terra-200 hover:shadow-[var(--shadow-warm-sm)] transition-all relative">
-                    <div className="absolute -left-[21px] top-4 h-2.5 w-2.5 rounded-full border-2 border-terra-400 bg-white" />
-                    <p className="text-sm font-semibold text-ink-800">{e.title || '（無標題）'}</p>
-                    <div className="flex items-center gap-2 mt-0.5 text-xs text-ink-400">
-                      <span>{fmtDate(e.date)}</span>
-                      {e.company && <><span>·</span><span>{e.company}</span></>}
+          {companyGroups.length === 0 ? (
+            <div className="py-20 text-center text-ink-400">還沒有日誌。新增第一篇後，這裡會依公司呈現你的職涯累積。</div>
+          ) : (
+            <div className="space-y-3">
+              {companyGroups.map((group) => {
+                const isOpen = expandedCompanies.has(group.companyName)
+                const tier = densityTier(group.count)
+                return (
+                  <div key={group.companyName}
+                    className="rounded-xl border border-warm-200 bg-white p-4 shadow-[var(--shadow-warm-xs)] space-y-2">
+                    <button type="button" onClick={() => toggleCompanyExpanded(group.companyName)}
+                      aria-expanded={isOpen}
+                      className="w-full text-left space-y-1.5 py-0.5">
+                      <div className="flex items-start gap-2 min-w-0">
+                        <span aria-hidden className={`shrink-0 mt-0.5 text-ink-400 transition-transform ${isOpen ? 'rotate-90' : ''}`}>▸</span>
+                        <div className="flex items-baseline gap-x-2 gap-y-0.5 flex-wrap min-w-0">
+                          <span className="text-sm font-bold text-ink-900 break-words">{group.companyName}</span>
+                          <span className="text-[11px] text-ink-400 tabular-nums whitespace-nowrap">記錄期間 {periodLabel(group.firstDate, group.lastDate)}</span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 justify-end">
+                        <span className="text-sm font-bold text-ink-700 tabular-nums">{group.count} 篇</span>
+                        <span className={`text-[10.5px] font-bold px-2 py-0.5 rounded-full border whitespace-nowrap ${tier.chip}`}>{tier.label}</span>
+                      </div>
+                    </button>
+                    <div className="h-[9px] rounded-full bg-warm-100 overflow-hidden">
+                      <div className={`h-full rounded-full transition-all duration-500 ${tier.bar}`} style={{ width: barWidth(group.count) }} />
                     </div>
-                    {(e.tags ?? []).length > 0 && (
-                      <div className="flex flex-wrap gap-1 mt-1.5">
-                        {(e.tags ?? []).slice(0, 3).map((t) => <span key={t} className="rounded-full border border-terra-200 bg-terra-50 px-2 py-0.5 text-[10px] text-terra-600">{t}</span>)}
+
+                    {isOpen && (
+                      <div className="space-y-5 pt-2">
+                        {groupEntriesByMonth(group.entries).map(([month, monthEntries]) => (
+                          <div key={month} className="relative">
+                            <div className="flex items-center gap-3 mb-3">
+                              <div className="h-3 w-3 rounded-full bg-terra-400 shrink-0" />
+                              <p className="text-sm font-semibold text-ink-700">{month}</p>
+                              <div className="flex-1 h-px bg-warm-200" />
+                              <span className="text-xs text-ink-400 tabular-nums">{monthEntries.length} 篇</span>
+                            </div>
+                            <div className="ml-6 border-l-2 border-warm-200 pl-4 space-y-3">
+                              {monthEntries.map((e) => (
+                                <div key={e.id}
+                                  onClick={() => { setDetailEntry(e); setInterviewMatches(null); setView('detail') }}
+                                  className="cursor-pointer rounded-xl border border-warm-200 bg-white p-3 hover:border-terra-200 hover:shadow-[var(--shadow-warm-sm)] transition-all relative">
+                                  <div className="absolute -left-[21px] top-4 h-2.5 w-2.5 rounded-full border-2 border-terra-400 bg-white" />
+                                  <p className="text-sm font-semibold text-ink-800">{e.title || '（無標題）'}</p>
+                                  <div className="flex items-center gap-2 mt-0.5 text-xs text-ink-400">
+                                    <span>{fmtDate(e.date)}</span>
+                                    {e.company && <><span>·</span><span>{e.company}</span></>}
+                                  </div>
+                                  {(e.tags ?? []).length > 0 && (
+                                    <div className="flex flex-wrap gap-1 mt-1.5">
+                                      {(e.tags ?? []).slice(0, 3).map((t) => <span key={t} className="rounded-full border border-terra-200 bg-terra-50 px-2 py-0.5 text-[10px] text-terra-600">{t}</span>)}
+                                    </div>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     )}
                   </div>
-                ))}
-              </div>
+                )
+              })}
             </div>
-          ))}
+          )}
 
           {/* Top tags */}
           {achievementStats.topTags.length > 0 && (
@@ -1188,24 +1293,6 @@ export default function WorkJournalPage() {
                     {tag}
                     <span className="font-bold text-terra-500">{count}</span>
                   </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Top companies */}
-          {achievementStats.topCompanies.length > 0 && (
-            <div className="rounded-xl border border-warm-200 bg-white p-4 space-y-3">
-              <p className="text-xs font-semibold text-ink-700">🏢 記錄最多的公司</p>
-              <div className="space-y-2">
-                {achievementStats.topCompanies.map(([company, count]) => (
-                  <div key={company} className="flex items-center gap-3">
-                    <span className="text-sm text-ink-700 flex-1">{company}</span>
-                    <div className="flex-1 max-w-[100px] h-1.5 bg-warm-200 rounded-full overflow-hidden">
-                      <div className="h-full bg-terra-400 rounded-full" style={{ width: `${(count / achievementStats.topCompanies[0][1]) * 100}%` }} />
-                    </div>
-                    <span className="text-xs text-ink-400 w-8 text-right">{count} 篇</span>
-                  </div>
                 ))}
               </div>
             </div>
