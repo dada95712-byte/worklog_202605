@@ -3,6 +3,8 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import Link from 'next/link'
 import { PageTooltip } from '@/components/onboarding/page-tooltip'
+import { fmtDate } from '@/lib/utils'
+import { readJournalIdParam } from '@/lib/journal-link'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -103,10 +105,6 @@ const JOURNAL_KEY = 'career-journal'
 
 function genId() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7) }
 function todayStr() { return new Date().toISOString().slice(0, 10) }
-function fmtDate(iso: string) {
-  try { const d = new Date(iso); return `${d.getFullYear()}/${(d.getMonth()+1).toString().padStart(2,'0')}/${d.getDate().toString().padStart(2,'0')}` }
-  catch { return iso }
-}
 function relativeTime(iso: string) {
   const mins = Math.floor((Date.now() - new Date(iso).getTime()) / 60000)
   if (mins < 60) return `${Math.max(0,mins)} 分鐘前`
@@ -295,10 +293,17 @@ export default function WorkJournalPage() {
   const [analyzing, setAnalyzing] = useState(false)
   const [interviewMatches, setInterviewMatches] = useState<{ question_text: string; relevance_reason: string; star: Record<string, string> }[] | null>(null)
 
+  // 從其他頁面（技能地圖來源卡片、成就卡片…）帶 journalId 進來時，要等日誌載完才能
+  // 判斷「找不到」，否則載入中的空陣列會被誤判成日誌已刪除
+  const [journalsLoaded, setJournalsLoaded] = useState(false)
+  const [deepLinkId, setDeepLinkId] = useState<string | null>(null)
+  const [sourceNotice, setSourceNotice] = useState('')
+
   // ── Init ──────────────────────────────────────────────────────────────────
 
   useEffect(() => {
     setIsMobile(window.innerWidth < 768)
+    setDeepLinkId(readJournalIdParam())
     // Entries now persist server-side. On first load with no DB rows yet, migrate
     // whatever was sitting in localStorage from the old client-only version once.
     ;(async () => {
@@ -321,8 +326,26 @@ export default function WorkJournalPage() {
           setEntries(migrated)
         }
       } catch { /* ignore */ }
+      finally { setJournalsLoaded(true) }
     })()
   }, [])
+
+  // 帶 journalId 進來就直接開該篇日誌的詳細檢視；日誌已被刪除時退回列表並說明原因，
+  // 不要留下空白畫面
+  useEffect(() => {
+    if (!deepLinkId || !journalsLoaded) return
+    const target = entries.find((e) => e.id === deepLinkId)
+    if (target) {
+      setDetailEntry(target)
+      setInterviewMatches(null)
+      setView('detail')
+    } else {
+      setMainTab('list')
+      setView('main')
+      setSourceNotice('來源日誌已不存在')
+    }
+    setDeepLinkId(null)
+  }, [deepLinkId, journalsLoaded, entries])
 
   // 進到「待確認」或「職涯成就」分頁時才載入 AI 萃取的成就／技能／洞察清單
   useEffect(() => {
@@ -1119,6 +1142,16 @@ export default function WorkJournalPage() {
           <span className="text-base leading-none">＋</span> 新增日誌
         </button>
       </div>
+
+      {/* 從其他頁面點來源卡片跳過來，但那篇日誌已經被刪除時的提示 */}
+      {sourceNotice && (
+        <div className="flex items-center gap-2 rounded-xl border border-orange-200 bg-orange-50 px-4 py-2.5 text-sm text-orange-700">
+          <span>⚠️</span>
+          <span className="flex-1">{sourceNotice}</span>
+          <button onClick={() => setSourceNotice('')} aria-label="關閉"
+            className="text-orange-400 hover:text-orange-600 transition-colors text-lg leading-none">×</button>
+        </div>
+      )}
 
       {/* Tab bar — icon only on mobile */}
       {(() => {

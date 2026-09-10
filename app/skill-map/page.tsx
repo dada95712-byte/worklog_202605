@@ -2,14 +2,23 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { PageTooltip } from '@/components/onboarding/page-tooltip'
+import { fmtDate } from '@/lib/utils'
+import { journalDetailHref } from '@/lib/journal-link'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
 const SKILL_CATEGORIES = ['專業技能', '工具與軟體', '核心職能', '軟實力', '語言能力', '證照與認證', '學習中'] as const
 type SkillCategory = typeof SKILL_CATEGORIES[number]
 
-interface SkillEvidenceOut { journalId: string; journalTitle: string; excerpt: string }
+interface SkillEvidenceOut {
+  journalId: string
+  journalTitle: string
+  companyName: string | null
+  journalDate: string | null
+  excerpt: string
+}
 interface TaggedSkill {
   name: string
   category: SkillCategory
@@ -52,6 +61,7 @@ const CAT_BG: Record<SkillCategory, string> = {
 // ── Component ──────────────────────────────────────────────────────────────────
 
 export default function SkillMapPage() {
+  const router = useRouter()
   const [skills, setSkills] = useState<TaggedSkill[]>([])
   const [journalSkills, setJournalSkills] = useState<TaggedSkill[]>([])
   const [totalJournals, setTotalJournals] = useState(0)
@@ -104,7 +114,6 @@ export default function SkillMapPage() {
     return acc
   }, {} as Record<SkillCategory, TaggedSkill[]>)
 
-  const maxFreq = journalSkills.reduce((m, s) => Math.max(m, s.evidenceCount ?? 0), 0)
   const maxMissing = missingTop10[0]?.count ?? 1
 
   return (
@@ -213,7 +222,11 @@ export default function SkillMapPage() {
               .sort((a, b) => (b.evidenceCount ?? 0) - (a.evidenceCount ?? 0))
               .map((jSkill) => {
                 const count = jSkill.evidenceCount ?? 0
-                const pct = maxFreq > 0 ? Math.round((count / maxFreq) * 100) : 0
+                // 選項 A：進度條的基準跟右側「{count}/{totalJournals}」標籤一致，都是「總日誌篇數」。
+                // 原本用的是「本次出現最多次的技能」當滿格基準，會出現「6 篇裡只出現 2 次」的技能
+                // 進度條卻是滿的——視覺說滿了、數字說三分之一，兩者互相矛盾。
+                // 改成同一個基準後條會偏短，但畫面跟數字說的是同一件事。
+                const pct = totalJournals > 0 ? Math.min(100, Math.round((count / totalJournals) * 100)) : 0
                 const key = jSkill.id ?? jSkill.name
                 const isExpanded = expandedSkill === key
                 return (
@@ -232,10 +245,23 @@ export default function SkillMapPage() {
                     {isExpanded && (
                       <div className="pl-5 space-y-1.5">
                         {(jSkill.evidence ?? []).map((e) => (
-                          <div key={e.journalId} className="text-xs bg-cream-50 border border-warm-100 rounded-lg px-3 py-2">
-                            <p className="text-ink-400 mb-0.5">· {e.journalTitle || e.journalId}</p>
-                            <p className="text-ink-600">「{e.excerpt}」</p>
-                          </div>
+                          <button
+                            key={e.journalId}
+                            type="button"
+                            onClick={() => router.push(journalDetailHref(e.journalId))}
+                            className="block w-full text-left text-xs bg-cream-50 border border-warm-100 rounded-lg px-3 py-2 cursor-pointer hover:border-terra-200 hover:shadow-[var(--shadow-warm-sm)] transition-all"
+                          >
+                            <p className="text-ink-700 font-medium">{e.journalTitle || e.journalId}</p>
+                            {/* 公司與日期查不到就整欄不渲染，不留空位、也不填「未知」 */}
+                            {(e.companyName || e.journalDate) && (
+                              <p className="text-[10px] text-ink-400 mt-0.5 flex flex-wrap items-center gap-x-1.5">
+                                {e.companyName && <span className="break-words">{e.companyName}</span>}
+                                {e.companyName && e.journalDate && <span aria-hidden>·</span>}
+                                {e.journalDate && <span className="tabular-nums whitespace-nowrap">{fmtDate(e.journalDate)}</span>}
+                              </p>
+                            )}
+                            <p className="text-ink-600 mt-1">「{e.excerpt}」</p>
+                          </button>
                         ))}
                         {!jSkill.isConfirmed && (
                           <Link href="/dashboard/skills" className="inline-block text-xs text-terra-500 hover:text-terra-700 transition-colors">

@@ -19,7 +19,9 @@ export async function GET() {
     orderBy: { createdAt: 'asc' },
     include: {
       evidence: {
-        include: { journal: { select: { id: true, title: true } } },
+        // 公司與日期一律從來源日誌帶出，不由 AI 產生、也不讓前端猜——
+        // 這是「AI 產出的每一項都能追溯回原文」的一部分
+        include: { journal: { select: { id: true, title: true, company: true, date: true } } },
         orderBy: { createdAt: 'asc' },
       },
     },
@@ -37,6 +39,9 @@ export async function GET() {
       evidence: s.evidence.map((e) => ({
         journalId: e.journalId,
         journalTitle: e.journal?.title ?? '',
+        // 查不到就回 null，前端整欄不渲染，不要用「未知」或空字串佔位
+        companyName: e.journal?.company?.trim() || null,
+        journalDate: e.journal?.date?.toISOString() ?? null,
         excerpt: e.evidenceExcerpt,
       })),
     })),
