@@ -3,11 +3,11 @@ import Link from 'next/link'
 const LAYERS = [
   {
     layer: '累積',
-    desc: '每天記錄工作成果，系統自動萃取技能與成就，累積成只屬於你的職涯資料庫。',
+    desc: '填好個人背景，每天記錄工作成果，系統自動萃取技能與成就，累積成只屬於你的職涯資料庫。',
     color: 'bg-terra-50 border-terra-100',
     items: [
-      { emoji: '📓', title: '工作日誌',   href: '/work-journal',    sub: 'STAR／自由／AI 引導記錄 · 自動萃取技能與成就' },
       { emoji: '🗂️', title: '個人檔案庫', href: '/profile-library', sub: '基本資訊／學歷／經歷／證照 · 履歷自動取用' },
+      { emoji: '📓', title: '工作日誌',   href: '/work-journal',    sub: 'STAR／自由／AI 引導記錄 · 自動萃取技能與成就' },
       { emoji: '🌱', title: '技能地圖',   href: '/skill-map',       sub: '技能分類全覽 · 日誌技能頻率 · 缺口累積' },
     ],
   },
