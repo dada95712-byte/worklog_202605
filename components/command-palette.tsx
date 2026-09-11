@@ -9,8 +9,8 @@ import { cn } from '@/lib/utils'
 const NAV = [
   { label: 'Dashboard',   href: '/dashboard',        icon: '⬡',  shortcut: 'G D' },
   // 累積
-  { label: '工作日誌',    href: '/work-journal',     icon: '✍',  shortcut: 'G W' },
   { label: '個人檔案庫',  href: '/profile-library',  icon: '◑',  shortcut: 'G P' },
+  { label: '工作日誌',    href: '/work-journal',     icon: '✍',  shortcut: 'G W' },
   { label: '技能地圖',    href: '/skill-map',        icon: '◈',  shortcut: 'G S' },
   // 轉換
   { label: '履歷',        href: '/resume-lab',       icon: '◈',  shortcut: 'G R' },

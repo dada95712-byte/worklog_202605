@@ -5,14 +5,17 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Sidebar } from './sidebar'
 
+// 手機底部導覽：順序與側邊欄一致，但只放手機上真正需要一鍵到達的。
+// 先前七個項目擠在一列（375px 下每個約 53px），卻**沒有工作日誌**——
+// 手機正是最適合隨手記日誌的裝置，這是最該一鍵到達的功能。
+// 技能地圖、AI 職涯教練、職缺分析改由漢堡選單進入（點開即完整側邊欄）。
 const BOTTOM_NAV = [
-  { href: '/dashboard',            icon: '🏠', label: 'Home' },
-  { href: '/profile-library',      icon: '👤', label: '檔案庫' },
-  { href: '/resume-lab',       icon: '📄', label: '履歷' },
-  { href: '/jobs',         icon: '🎯', label: '職缺' },
-  { href: '/skill-map',        icon: '🌱', label: '技能' },
-  { href: '/interviews',       icon: '💬', label: '面試' },
-  { href: '/analytics',  icon: '📊', label: '分析' },
+  { href: '/dashboard',       icon: '🏠', label: 'Home' },
+  { href: '/profile-library', icon: '👤', label: '檔案庫' },
+  { href: '/work-journal',    icon: '✍', label: '日誌' },
+  { href: '/resume-lab',      icon: '📄', label: '履歷' },
+  { href: '/interviews',      icon: '💬', label: '面試' },
+  { href: '/jobs',            icon: '🎯', label: '職缺' },
 ]
 
 export function AppLayout({ children }: { children: React.ReactNode }) {

@@ -15,6 +15,12 @@ import { useCommandPalette } from '@/contexts/command-palette'
 //   出擊：求職追蹤、職缺分析
 // 側邊欄按使用頻率而非「第一次該做什麼」排序；後者由下方「開始 → 完善資料」、
 // Dashboard 任務清單與各頁提示負責。
+// 順序對應首頁的「累積 → 轉換 → 出擊」三層結構：
+//   累積：個人檔案庫（先說明你是誰）、工作日誌（每天回來的那一個）、技能地圖
+//   轉換：履歷、面試練習、AI 職涯教練
+//   出擊：求職追蹤、職缺分析
+// 個人檔案庫排在工作日誌之前，與各頁提示「從這裡開始：個人檔案庫」一致；
+// 兩者同屬累積層，層內順序不影響三層定位。
 const navItems = [
   {
     href: '/dashboard',
@@ -27,22 +33,22 @@ const navItems = [
     ),
   },
   {
-    href: '/work-journal',
-    label: '工作日誌',
-    icon: (
-      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-        <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
-        <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 0 3-3h7z" />
-      </svg>
-    ),
-  },
-  {
     href: '/profile-library',
     label: '個人檔案庫',
     icon: (
       <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
         <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
         <circle cx="12" cy="7" r="4" />
+      </svg>
+    ),
+  },
+  {
+    href: '/work-journal',
+    label: '工作日誌',
+    icon: (
+      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+        <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
+        <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 0 3-3h7z" />
       </svg>
     ),
   },
