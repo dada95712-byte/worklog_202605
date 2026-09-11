@@ -14,6 +14,7 @@ import {
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { ResumePreview, type PreviewData, type SectionId, type TemplateId } from './resume-preview'
+import { fmtDate } from '@/lib/utils'
 
 // ── Internal types ─────────────────────────────────────────────────────────────
 
@@ -317,6 +318,11 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 
 // ── Bullet textarea ───────────────────────────────────────────────────────────
 
+interface AchievementPick {
+  id: string; text: string; metric: string | null
+  company: string | null; journalTitle: string; journalDate: string | null
+}
+
 // 把既有的散文描述切成列點。純文字處理、不經過 AI：一個字都不會改，
 // 只是把句子拆行並加上「• 」——舊履歷（或 AI 生成時還沒要求列點的版本）
 // 會是整段文字，這個函式讓使用者一鍵轉成列點格式。
@@ -542,6 +548,17 @@ export function ResumeEditor({ initialData, initialName, onSave, onBack, onScore
     expId: string; loading: boolean
     versions: { label: string; bullets: string[] }[] | null
     editMode: boolean; editedBullets: string[][]
+  } | null>(null)
+
+  // 從職涯成就插入：先挑成就，再讓 AI 轉成 XYZ 列點，確認後才寫進描述
+  const [achModal, setAchModal] = useState<{
+    expId: string; company: string
+    stage: 'pick' | 'convert'
+    loading: boolean
+    achievements: AchievementPick[]
+    selected: string[]
+    matchedCompany: boolean
+    versions: { label: string; bullets: string[] }[] | null
   } | null>(null)
   // Feature 4: score panel
   const [showScorePanel, setShowScorePanel] = useState(false)
@@ -788,6 +805,59 @@ export function ResumeEditor({ initialData, initialName, onSave, onBack, onScore
     finally { setGeneratingSummary(false) }
   }
 
+  // 開啟「從職涯成就插入」：載入已確認的成就，預設只列這家公司的
+  async function openAchievementPicker(id: string) {
+    const exp = resume.experiences.find(e => e.id === id); if (!exp) return
+    setAchModal({ expId: id, company: exp.company, stage: 'pick', loading: true,
+      achievements: [], selected: [], matchedCompany: true, versions: null })
+    try {
+      const res = await fetch('/api/journals/achievements')
+      const data = await res.json()
+      const all: AchievementPick[] = (data.achievements ?? [])
+        .filter((a: { isConfirmed: boolean }) => a.isConfirmed)
+      // 公司名稱兩邊已改為共用清單，這裡用精確比對；真的比不到才退回顯示全部並說明原因
+      const sameCompany = all.filter((a) => (a.company ?? '').trim() === exp.company.trim())
+      const matched = sameCompany.length > 0
+      setAchModal(prev => prev && prev.expId === id
+        ? { ...prev, loading: false, achievements: matched ? sameCompany : all, matchedCompany: matched }
+        : prev)
+    } catch {
+      setAchModal(prev => prev && prev.expId === id ? { ...prev, loading: false } : prev)
+    }
+  }
+
+  async function convertAchievements() {
+    const m = achModal; if (!m || m.selected.length === 0) return
+    const exp = resume.experiences.find(e => e.id === m.expId)
+    setAchModal({ ...m, stage: 'convert', loading: true, versions: null })
+    try {
+      const res = await fetch('/api/resume/achievements-to-bullets', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          achievementIds: m.selected, title: exp?.title, company: exp?.company,
+          language: resume.lang,
+        }),
+      })
+      const data = await res.json()
+      if (data.error === 'rate_limit') { setRateLimitToast(true); setAchModal(null); return }
+      setAchModal(prev => prev ? { ...prev, loading: false, versions: data.versions ?? null } : null)
+    } catch {
+      setAchModal(prev => prev ? { ...prev, loading: false, versions: null } : null)
+    }
+  }
+
+  // 轉好的列點附加到原描述後面（不覆蓋既有內容）
+  function applyAchievementBullets(bullets: string[]) {
+    const m = achModal; if (!m) return
+    const exp = resume.experiences.find(e => e.id === m.expId)
+    const existing = (exp?.description ?? '').trim()
+    const added = bullets
+      .map(b => (b.trim().startsWith('•') ? b.trim() : `• ${b.trim()}`))
+      .join('\n')
+    updExp(m.expId, 'description', existing ? existing + '\n' + added : added)
+    setAchModal(null)
+  }
+
   async function handleOptimizeExp(id: string) {
     const exp = resume.experiences.find(e => e.id === id); if (!exp) return
     setOptimizeModal({ expId: id, loading: true, versions: null, editMode: false, editedBullets: [] })
@@ -925,6 +995,11 @@ export function ResumeEditor({ initialData, initialName, onSave, onBack, onScore
                           ⋮≡ 轉為列點
                         </button>
                       )}
+                      <button onClick={() => openAchievementPicker(exp.id)}
+                        title="從工作日誌已確認的成就，轉成履歷用的列點"
+                        className="rounded-md border border-sage-300 bg-sage-50 px-2 py-1 text-[10px] text-sage-700 hover:bg-sage-100 transition-all">
+                        ⊕ 從職涯成就插入
+                      </button>
                       <button onClick={() => handleOptimizeExp(exp.id)} disabled={!!(optimizeModal?.expId === exp.id && optimizeModal?.loading)}
                         className="flex items-center gap-1 rounded-md border border-terra-200 bg-terra-50 px-2 py-1 text-[10px] text-terra-600 hover:bg-terra-100 transition-all disabled:opacity-60">
                         {optimizeModal?.expId === exp.id && optimizeModal?.loading ? <><SpinSm />優化中…</> : '🤖 AI 優化'}
@@ -1275,6 +1350,103 @@ export function ResumeEditor({ initialData, initialName, onSave, onBack, onScore
           }}
         />
       )}
+      {/* 從職涯成就插入 */}
+      {achModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="flex max-h-[85vh] w-full max-w-lg flex-col rounded-2xl bg-white shadow-xl">
+            <div className="flex items-center gap-2 border-b border-warm-100 px-5 py-3">
+              <h2 className="flex-1 text-base font-bold text-ink-800">
+                {achModal.stage === 'pick' ? '⊕ 從職涯成就插入' : '✍ 轉成履歷列點'}
+              </h2>
+              <button onClick={() => setAchModal(null)} className="text-xl leading-none text-ink-400 hover:text-ink-700">✕</button>
+            </div>
+
+            <div className="flex-1 space-y-3 overflow-y-auto px-5 py-4">
+              {achModal.loading ? (
+                <div className="flex flex-col items-center justify-center gap-3 py-16 text-ink-400">
+                  <SpinSm /><p className="text-sm">{achModal.stage === 'pick' ? '載入成就中…' : 'AI 轉換中…'}</p>
+                </div>
+              ) : achModal.stage === 'pick' ? (
+                achModal.achievements.length === 0 ? (
+                  <div className="py-12 text-center text-sm text-ink-400 leading-relaxed">
+                    還沒有已確認的成就。<br />
+                    到工作日誌的「待確認」分頁審核 AI 擷取的成就，確認後就能插進履歷。
+                  </div>
+                ) : (
+                  <>
+                    {!achModal.matchedCompany && (
+                      <p className="rounded-lg border border-honey-200 bg-honey-50 px-3 py-2 text-[11px] leading-relaxed text-clay-700">
+                        找不到公司名稱為「{achModal.company || '（未填）'}」的成就，以下列出全部已確認成就。
+                        若日誌與這段工作經歷是同一家公司，建議把兩邊的公司名稱改成一致。
+                      </p>
+                    )}
+                    {achModal.achievements.map((a) => {
+                      const on = achModal.selected.includes(a.id)
+                      return (
+                        <button key={a.id} type="button"
+                          onClick={() => setAchModal({ ...achModal,
+                            selected: on ? achModal.selected.filter(x => x !== a.id) : [...achModal.selected, a.id] })}
+                          className={`block w-full rounded-xl border p-3 text-left transition-all ${on ? 'border-terra-400 bg-terra-50' : 'border-warm-200 bg-white hover:border-warm-400'}`}>
+                          <div className="flex items-start gap-2">
+                            <span className="mt-0.5 text-xs">{on ? '☑' : '☐'}</span>
+                            <div className="min-w-0 flex-1">
+                              <p className="text-sm text-ink-800">
+                                {a.text}
+                                {a.metric && <span className="ml-1 font-semibold text-terra-600">（{a.metric}）</span>}
+                              </p>
+                              <p className="mt-1 text-[10px] text-ink-400">
+                                📓 {a.journalTitle || '日誌'}{a.journalDate && ` · ${fmtDate(a.journalDate)}`}
+                              </p>
+                            </div>
+                          </div>
+                        </button>
+                      )
+                    })}
+                  </>
+                )
+              ) : achModal.versions ? (
+                achModal.versions.map((v, i) => (
+                  <div key={i} className="rounded-xl border border-warm-200 p-4">
+                    <p className="mb-2 text-xs font-semibold text-terra-600">{v.label}</p>
+                    <ul className="space-y-1.5">
+                      {v.bullets.map((b, bi) => (
+                        <li key={bi} className="text-sm leading-relaxed text-ink-700">{b.startsWith('•') ? b : `• ${b}`}</li>
+                      ))}
+                    </ul>
+                    <button onClick={() => applyAchievementBullets(v.bullets)}
+                      className="mt-3 w-full rounded-lg bg-terra-500 py-2 text-xs font-semibold text-white transition-colors hover:bg-terra-700">
+                      使用這個版本
+                    </button>
+                  </div>
+                ))
+              ) : (
+                <div className="py-12 text-center text-sm text-ink-400">轉換失敗或結果未通過數字驗證，請再試一次。</div>
+              )}
+            </div>
+
+            <div className="flex items-center gap-2 border-t border-warm-100 px-5 py-3">
+              {achModal.stage === 'pick' ? (
+                <>
+                  <p className="flex-1 text-[11px] text-ink-400">已選 {achModal.selected.length} 條</p>
+                  <button onClick={() => setAchModal(null)}
+                    className="rounded-xl border border-warm-200 px-4 py-2 text-sm text-ink-500 hover:bg-cream-100">取消</button>
+                  <button onClick={convertAchievements} disabled={achModal.selected.length === 0}
+                    className="rounded-xl bg-terra-500 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-terra-700 disabled:opacity-40">
+                    轉成履歷列點 →
+                  </button>
+                </>
+              ) : (
+                <>
+                  <p className="flex-1 text-[11px] text-ink-400">內容只依據你確認過的成就改寫，數字不會被捏造</p>
+                  <button onClick={() => setAchModal({ ...achModal, stage: 'pick', versions: null })}
+                    className="rounded-xl border border-warm-200 px-4 py-2 text-sm text-ink-500 hover:bg-cream-100">← 重新選擇</button>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       <RateLimitToast visible={rateLimitToast} onDismiss={() => setRateLimitToast(false)} />
     </div>
   )
