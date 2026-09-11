@@ -5,13 +5,17 @@ import { useRouter } from 'next/navigation'
 import { useCommandPalette } from '@/contexts/command-palette'
 import { cn } from '@/lib/utils'
 
+// 名稱與順序與側邊欄（components/nav/sidebar.tsx）一致，側邊欄有的這裡都要有
 const NAV = [
-  { label: 'Dashboard',       href: '/dashboard',            icon: '⬡',  shortcut: 'G D' },
-  { label: '履歷',            href: '/resume-lab',       icon: '◈',  shortcut: 'G R' },
-  { label: '求職追蹤',    href: '/jobs',         icon: '◎',  shortcut: 'G J' },
-  { label: '技能地圖',       href: '/skill-map',        icon: '◈',  shortcut: 'G S' },
-  { label: '面試練習', href: '/interviews',       icon: '⬟',  shortcut: 'G I' },
-  { label: '職缺分析',       href: '/analytics',  icon: '◉',  shortcut: 'G A' },
+  { label: 'Dashboard',   href: '/dashboard',        icon: '⬡',  shortcut: 'G D' },
+  { label: '個人檔案庫',  href: '/profile-library',  icon: '◑',  shortcut: 'G P' },
+  { label: '履歷',        href: '/resume-lab',       icon: '◈',  shortcut: 'G R' },
+  { label: '工作日誌',    href: '/work-journal',     icon: '✍',  shortcut: 'G W' },
+  { label: '求職追蹤',    href: '/jobs',             icon: '◎',  shortcut: 'G J' },
+  { label: '技能地圖',    href: '/skill-map',        icon: '◈',  shortcut: 'G S' },
+  { label: '面試練習',    href: '/interviews',       icon: '⬟',  shortcut: 'G I' },
+  { label: 'AI 職涯教練', href: '/career-coach',     icon: '🤖', shortcut: 'G C' },
+  { label: '職缺分析',    href: '/analytics',        icon: '◉',  shortcut: 'G A' },
 ]
 
 const ACTIONS = [

@@ -509,14 +509,44 @@ export default function InterviewPrepPage() {
   const [voiceTarget, setVoiceTarget] = useState<'mock' | 'practice' | 'record'>('mock')
   const recognitionRef = useRef<InstanceType<SpeechRecognitionCtor> | null>(null)
 
+  // 面試練習資料改為資料庫持久化（原本只存 localStorage，換裝置就不見）。
+  // 首次載入若資料庫是空的，把舊的 localStorage 內容搬上去一次，之後就以資料庫為準。
   useEffect(() => {
-    const saved = localStorage.getItem('interview-records')
-    if (saved) setRecords(JSON.parse(saved))
-  }, [])
+    (async () => {
+      try {
+        const res = await fetch('/api/interviews')
+        if (!res.ok) return
+        const data = await res.json() as {
+          sessions: InterviewSession[]; records: RealRecord[]; bookmarks: BookmarkedQuestion[]
+        }
 
-  useEffect(() => {
-    const saved = localStorage.getItem('interview-bookmarks')
-    if (saved) setBookmarks(JSON.parse(saved))
+        const legacy = {
+          sessions:  JSON.parse(localStorage.getItem('interview-mock-sessions') ?? '[]') as InterviewSession[],
+          records:   JSON.parse(localStorage.getItem('interview-records') ?? '[]') as RealRecord[],
+          bookmarks: JSON.parse(localStorage.getItem('interview-bookmarks') ?? '[]') as BookmarkedQuestion[],
+        }
+        const migrate: Record<string, unknown> = {}
+        if (data.sessions.length === 0  && legacy.sessions.length > 0)  migrate.sessions  = legacy.sessions
+        if (data.records.length === 0   && legacy.records.length > 0)   migrate.records   = legacy.records
+        if (data.bookmarks.length === 0 && legacy.bookmarks.length > 0) migrate.bookmarks = legacy.bookmarks
+
+        if (Object.keys(migrate).length > 0) {
+          await fetch('/api/interviews', {
+            method: 'PUT', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(migrate),
+          })
+        }
+
+        const finalSessions  = (migrate.sessions  as InterviewSession[])   ?? data.sessions
+        const finalRecords   = (migrate.records   as RealRecord[])         ?? data.records
+        const finalBookmarks = (migrate.bookmarks as BookmarkedQuestion[]) ?? data.bookmarks
+
+        setRecords(finalRecords)
+        setBookmarks(finalBookmarks)
+        setSessions(finalSessions)
+        setMockStep(finalSessions.length > 0 ? 'sessions' : 'setup')
+      } catch { /* 保留目前畫面狀態，不中斷使用 */ }
+    })()
   }, [])
 
   useEffect(() => {
@@ -536,12 +566,6 @@ export default function InterviewPrepPage() {
     }).catch(() => { /* ignore */ })
   }, [])
 
-  useEffect(() => {
-    const saved = localStorage.getItem('interview-mock-sessions')
-    const parsed: InterviewSession[] = saved ? JSON.parse(saved) : []
-    setSessions(parsed)
-    setMockStep(parsed.length > 0 ? 'sessions' : 'setup')
-  }, [])
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
@@ -597,15 +621,23 @@ export default function InterviewPrepPage() {
     return () => clearTimeout(id)
   }, [timerSec, timerPhase])
 
+  // 三種資料各自整份提交；任一種失敗只影響該次儲存，畫面狀態維持使用者剛操作的結果
+  const persistInterviews = useCallback((payload: Record<string, unknown>) => {
+    fetch('/api/interviews', {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    }).catch(() => { /* 網路失敗時保留樂觀更新的畫面 */ })
+  }, [])
+
   const saveRecords = useCallback((next: RealRecord[]) => {
     setRecords(next)
-    localStorage.setItem('interview-records', JSON.stringify(next))
-  }, [])
+    persistInterviews({ records: next })
+  }, [persistInterviews])
 
   const saveSessions = useCallback((next: InterviewSession[]) => {
     setSessions(next)
-    localStorage.setItem('interview-mock-sessions', JSON.stringify(next))
-  }, [])
+    persistInterviews({ sessions: next })
+  }, [persistInterviews])
 
   // ── Computed (QA bank) ────────────────────────────────────────────────────
   const catQuestions   = QA_BANK.find((c) => c.category === selectedCat)?.questions ?? []
@@ -831,7 +863,7 @@ export default function InterviewPrepPage() {
                 ...sq, userAnswer: a, aiScore: data.score ?? 0, aiFeedback: data.feedback ?? '',
               }),
             })
-            localStorage.setItem('interview-mock-sessions', JSON.stringify(next))
+            persistInterviews({ sessions: next })
             return next
           })
         }
@@ -866,8 +898,8 @@ export default function InterviewPrepPage() {
 
   const saveBookmarks = useCallback((next: BookmarkedQuestion[]) => {
     setBookmarks(next)
-    localStorage.setItem('interview-bookmarks', JSON.stringify(next))
-  }, [])
+    persistInterviews({ bookmarks: next })
+  }, [persistInterviews])
 
   function bookmarkQ(q: Question) {
     if (!q.userAnswer) return
@@ -1008,7 +1040,7 @@ export default function InterviewPrepPage() {
               ...sq, userAnswer: answer, aiScore: data.score ?? 0, aiFeedback: data.feedback ?? '',
             }),
           })
-          localStorage.setItem('interview-mock-sessions', JSON.stringify(next))
+          persistInterviews({ sessions: next })
           return next
         })
       }

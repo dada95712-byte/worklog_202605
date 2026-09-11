@@ -285,21 +285,19 @@ function useDashboardData(): DashboardData {
       fetch('/api/resumes').then(j),
       fetch('/api/skills').then(j),
       fetch('/api/work-journal').then(j),
-    ]).then(([trackerRes, resumeRes, skillRes, journalRes]) => {
+      fetch('/api/interviews').then(j),
+    ]).then(([trackerRes, resumeRes, skillRes, journalRes, interviewRes]) => {
       const tracker = trackerRes.status === 'fulfilled' ? trackerRes.value : null
       const resumes = resumeRes.status === 'fulfilled' ? resumeRes.value : null
       const skills  = skillRes.status === 'fulfilled' ? skillRes.value : null
       const journal = journalRes.status === 'fulfilled' ? journalRes.value : null
+      const interview = interviewRes.status === 'fulfilled' ? interviewRes.value : null
 
       const resumeList: { score: number | null; atsScore: number | null }[] = resumes?.resumes ?? []
       const scored = resumeList.map((r) => r.atsScore ?? r.score).filter((s): s is number => typeof s === 'number')
 
-      // 面試練習記錄目前仍存在瀏覽器端（尚未接資料庫），沿用面試練習頁同一個 key
-      let interviewSessions = 0
-      try {
-        const raw = localStorage.getItem('interview-mock-sessions')
-        if (raw) interviewSessions = (JSON.parse(raw) as unknown[]).length
-      } catch { /* ignore */ }
+      // 模擬練習 + 實際面試記錄都算進「面試練習」的累積量
+      const interviewSessions = (interview?.sessions ?? []).length + (interview?.records ?? []).length
 
       setData({
         apps: tracker?.applications ?? [],

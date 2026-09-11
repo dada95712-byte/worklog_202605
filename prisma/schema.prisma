@@ -33,6 +33,8 @@ model User {
   learningGoals   LearningGoal[]
   chatSessions      ChatSession[]
   interviewSessions InterviewSession[]
+  interviewRecords   InterviewRecord[]
+  interviewBookmarks InterviewBookmark[]
   workJournals      WorkJournal[]
   dailyProgress     DailyProgress[]
   resumeScores      ResumeScore[]
@@ -294,6 +296,48 @@ model InterviewSession {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+// 面試練習「實際記錄」——真實面試完的事後記錄，跟模擬練習（InterviewSession）分開
+model InterviewRecord {
+  id            String   @id @default(cuid())
+  userId        String
+  question      String   @db.Text
+  answer        String   @db.Text
+  score         Int?
+  feedback      String?  @db.Text
+  company       String?
+  jobTitle      String?
+  interviewDate String?  // 使用者自填的面試日期（YYYY-MM-DD），跟建立時間不同
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+// 面試練習「個人題庫」——從練習結果收藏起來的好題目與最佳回答
+model InterviewBookmark {
+  id              String   @id @default(cuid())
+  userId          String
+  question        String   @db.Text
+  questionEn      String?  @db.Text
+  type            String   @default("general")
+  questionType    String?
+  framework       String?
+  userAnswer      String   @db.Text
+  aiScore         Int?
+  aiFeedback      String?  @db.Text
+  strengths       Json     @default("[]")
+  suggestions     Json     @default("[]")
+  optimizedAnswer String?  @db.Text
+  fromRole        String?
+  savedAt         DateTime @default(now())
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 model DailyProgress {
