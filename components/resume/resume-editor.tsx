@@ -317,6 +317,25 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 
 // ── Bullet textarea ───────────────────────────────────────────────────────────
 
+// 把既有的散文描述切成列點。純文字處理、不經過 AI：一個字都不會改，
+// 只是把句子拆行並加上「• 」——舊履歷（或 AI 生成時還沒要求列點的版本）
+// 會是整段文字，這個函式讓使用者一鍵轉成列點格式。
+export function toBullets(text: string): string {
+  const t = text.trim()
+  if (!t) return t
+  // 已經有列點就不動
+  if (t.split('\n').some((l) => l.trim().startsWith('•'))) return text
+
+  const lines = t.split('\n').map((l) => l.trim()).filter(Boolean)
+  // 本來就多行：每行加上項目符號即可
+  const parts = lines.length > 1
+    ? lines
+    // 單一整段：依中英文句號切句（保留句號後的內容，不丟字）
+    : t.split(/(?<=[。！？.!?])\s*/).map((s) => s.trim()).filter(Boolean)
+
+  return parts.map((p) => (p.startsWith('•') ? p : `• ${p}`)).join('\n')
+}
+
 function BulletTextarea({ value, onChange, rows = 5 }: { value: string; onChange: (v: string) => void; rows?: number }) {
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
     const ta = e.currentTarget
@@ -896,10 +915,21 @@ export function ResumeEditor({ initialData, initialName, onSave, onBack, onScore
                 <div>
                   <div className="flex items-center justify-between mb-1">
                     <label className={LBL + ' mb-0'}>工作描述</label>
-                    <button onClick={() => handleOptimizeExp(exp.id)} disabled={!!(optimizeModal?.expId === exp.id && optimizeModal?.loading)}
-                      className="flex items-center gap-1 rounded-md border border-terra-200 bg-terra-50 px-2 py-1 text-[10px] text-terra-600 hover:bg-terra-100 transition-all disabled:opacity-60">
-                      {optimizeModal?.expId === exp.id && optimizeModal?.loading ? <><SpinSm />優化中…</> : '🤖 AI 優化'}
-                    </button>
+                    <div className="flex items-center gap-1.5">
+                      {/* 舊履歷的描述可能是整段散文（生成端先前沒要求列點）；
+                          這顆按鈕只做純文字斷行，不經過 AI、不改任何字 */}
+                      {exp.description.trim() && !exp.description.split('\n').some((l) => l.trim().startsWith('•')) && (
+                        <button onClick={() => updExp(exp.id, 'description', toBullets(exp.description))}
+                          title="把整段描述依句子拆成列點（不會改動文字內容）"
+                          className="rounded-md border border-warm-300 bg-white px-2 py-1 text-[10px] text-ink-500 hover:border-terra-300 hover:text-terra-600 transition-all">
+                          ⋮≡ 轉為列點
+                        </button>
+                      )}
+                      <button onClick={() => handleOptimizeExp(exp.id)} disabled={!!(optimizeModal?.expId === exp.id && optimizeModal?.loading)}
+                        className="flex items-center gap-1 rounded-md border border-terra-200 bg-terra-50 px-2 py-1 text-[10px] text-terra-600 hover:bg-terra-100 transition-all disabled:opacity-60">
+                        {optimizeModal?.expId === exp.id && optimizeModal?.loading ? <><SpinSm />優化中…</> : '🤖 AI 優化'}
+                      </button>
+                    </div>
                   </div>
                   <BulletTextarea value={exp.description} onChange={v => updExp(exp.id, 'description', v)} />
                 </div>

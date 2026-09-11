@@ -25,6 +25,8 @@ export async function POST(req: Request) {
 - 公司名稱、學校名稱、職稱、日期必須與原始資料完全一致，不得更改
 - 根據 JD 選擇最相關的技能、經歷，調整措辭以符合 JD 語言風格（措辭可調整，事實不得更改）
 - skills 陣列優先放 JD 要求且檔案庫中存在的技能
+- experiences[].description 一律使用列點格式：每一點自成一行、以「• 」開頭，不要寫成整段散文；
+  每點 1–2 句、以動詞開頭（主導／優化／降低／提升…），有數字就保留數字，沒有就不要編
 - summary 針對 JD 撰寫，不超過 150 字，語言使用${langLabel}
 - 所有文字內容使用${langLabel}
 - 從 JD 擷取 jobTitle（職位名稱），放入 JSON 的 jobTitle 欄位
