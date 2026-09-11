@@ -1039,7 +1039,7 @@ export default function ProfileLibraryPage() {
         <div className="flex items-start justify-between gap-4">
           <div>
             <h1 className="text-xl md:text-2xl font-bold text-ink-900">個人檔案庫</h1>
-            <p className="mt-1 text-xs md:text-sm text-ink-400">你的職涯原始資料，建立履歷時自動引用</p>
+            <p className="mt-1 text-xs md:text-sm text-ink-400">你的個人背景資料，建立履歷時自動取用</p>
           </div>
           <div className="flex items-center gap-3 shrink-0">
             {saveStatus !== 'idle' && (
@@ -1081,8 +1081,7 @@ export default function ProfileLibraryPage() {
 
         {/* Data source explanation */}
         <div className="bg-sage-50 border-l-4 border-l-sage-400 rounded-xl px-4 py-3 text-sm text-sage-700">
-          個人檔案庫存放你的個人背景資料——基本資訊、學歷、工作經歷、證照、語言。
-          建立履歷時會自動取用這裡的資料；工作日誌萃取出的技能與成就，則會另外補進履歷的工作描述。
+          這裡填基本資訊、學歷、工作經歷、證照與語言；技能與成就不用填，工作日誌會自動萃取，建立履歷時兩邊都會取用。
         </div>
 
         {/* Progress bar */}
