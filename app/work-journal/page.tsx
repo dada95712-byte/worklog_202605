@@ -297,6 +297,7 @@ export default function WorkJournalPage() {
   // Interview analysis (detail view)
   const [analyzing, setAnalyzing] = useState(false)
   const [interviewMatches, setInterviewMatches] = useState<{ question_text: string; relevance_reason: string; star: Record<string, string> }[] | null>(null)
+  const [interviewBasis, setInterviewBasis] = useState(0)
 
   // 從其他頁面（技能地圖來源卡片、成就卡片…）帶 journalId 進來時，要等日誌載完才能
   // 判斷「找不到」，否則載入中的空陣列會被誤判成日誌已刪除
@@ -640,12 +641,15 @@ export default function WorkJournalPage() {
   async function analyzeForInterview(entry: JournalEntry) {
     const content = [entry.situation, entry.task, entry.action, entry.result, entry.content].filter(Boolean).join('\n')
     if (content.trim().length < 20) return
-    setAnalyzing(true); setInterviewMatches(null)
+    setAnalyzing(true); setInterviewMatches(null); setInterviewBasis(0)
     try {
+      // 帶上 journalId：後端若查到這篇已確認的成就，就用成就當事實基底，
+      // 而不是再從原文重新推導一次
       const res = await fetch('/api/journals/analyze-for-interview', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content }) })
+        body: JSON.stringify({ content, journalId: entry.id }) })
       const data = await res.json()
       setInterviewMatches(data.matched_questions ?? [])
+      setInterviewBasis(data.basedOnAchievements ?? 0)
     } catch { setInterviewMatches([]) }
     finally { setAnalyzing(false) }
   }
@@ -1097,6 +1101,11 @@ export default function WorkJournalPage() {
             </button>
           </div>
           {analyzing && <div className="py-4 flex justify-center"><Spinner className="h-6 w-6 text-terra-400" /></div>}
+          {interviewBasis > 0 && !analyzing && interviewMatches !== null && (
+            <p className="rounded-lg border border-sage-200 bg-sage-50 px-2.5 py-1.5 text-[10px] leading-relaxed text-sage-700">
+              ✓ 以這篇日誌中你已確認的 {interviewBasis} 條成就為基底，成果段落沿用成就的結論與指標
+            </p>
+          )}
           {interviewMatches !== null && !analyzing && (
             interviewMatches.length === 0
               ? <p className="text-xs text-ink-400">未找到相關面試題目，可嘗試補充更多細節後重新分析</p>
