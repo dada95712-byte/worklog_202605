@@ -15,17 +15,17 @@ WorkLog 的核心是工作日誌：使用者每天記錄工作成果，系統自
 
 | 模組 | 路徑 | 功能 |
 |------|------|------|
-| 工作日誌 | `/work-journal` | STAR／自由／AI 引導三種模式記錄，自動萃取技能與量化成就 |
-| 個人檔案庫 | `/profile-library` | 職涯資料的唯一原始來源，履歷生成直接取用 |
+| 個人檔案庫 | `/profile-library` | 基本資訊／學歷／經歷／證照／語言等個人背景資料，上傳既有履歷可由 AI 解析填入，建立履歷時自動取用 |
+| 工作日誌 | `/work-journal` | STAR／自由／AI 引導三種模式記錄，自動萃取技能與成就；確認後的成就可插入履歷與面試素材 |
 | 技能地圖 | `/skill-map` | 技能分類全覽、日誌技能頻率、跨職缺技能缺口累積 |
 
 ### 轉換層——把累積轉成求職戰力
 
 | 模組 | 路徑 | 功能 |
 |------|------|------|
-| 履歷 | `/resume-lab` | PDF/DOCX 履歷解析、AI 從檔案庫生成通用／客製化履歷、ATS 評分 |
+| 履歷 | `/resume-lab` | AI 從個人檔案庫生成通用／客製化履歷、ATS 評分、從已確認成就插入 XYZ 列點 |
 | 面試練習 | `/interviews` | 情境化模擬面試題生成、AI 答案評分、雙語練習 |
-| AI 教練 | `/career-coach` | 轉職、升職、求職策略對話問答 |
+| AI 職涯教練 | `/career-coach` | 轉職、升職、求職策略對話問答 |
 
 ### 出擊層——投出去、追蹤、分析
 
@@ -41,7 +41,8 @@ AI 產出的內容一律標示來源，並在程式端驗證：
 1. 能以搜尋取得的資料不交由 AI 生成
 2. Prompt 明確禁止補充來源以外的內容
 3. 程式端逐字比對，驗證失敗的資料直接丟棄不寫入
-4. UI 標示每筆資料的來源類型（已驗證／JD 推測／一般推測）
+4. 數字只能出自來源：成就轉履歷列點時，輸出中出現來源沒有的數字即丟棄該列點
+5. UI 標示每筆資料的來源類型（已驗證／JD 推測／一般推測）
 
 ## 技術架構
 
@@ -78,6 +79,7 @@ cp .env.example .env.local
 | `GOOGLE_CLIENT_ID` | Google OAuth | [Google Cloud Console](https://console.cloud.google.com) |
 | `GOOGLE_CLIENT_SECRET` | Google OAuth | 同上 |
 | `DATABASE_URL` | PostgreSQL 連線字串（必填） | [Neon.tech](https://neon.tech) — 程式碼使用 Neon 專屬的 serverless driver（`@prisma/adapter-neon`），非標準 TCP 連線，暫不支援 Supabase 等其他 provider |
+| `BLOB_READ_WRITE_TOKEN` | 圖片／附件儲存（工作日誌圖片、個人檔案作品附件） | [Vercel Blob](https://vercel.com/docs/storage/vercel-blob)（本機開發未設定時自動降級為 base64） |
 | `JSEARCH_API_KEY` | 職缺搜尋 API | [RapidAPI JSearch](https://rapidapi.com/letscrape-6bfed1765d1a6/api/jsearch) |
 | `SERPER_API_KEY` | 職缺搜尋備援 | [Serper.dev](https://serper.dev) |
 
