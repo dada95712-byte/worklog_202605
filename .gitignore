@@ -32,6 +32,8 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+# 範本檔例外：只有變數名稱與註解、不含任何值，README 的 `cp .env.example .env.local` 需要它
+!.env.example
 
 # vercel
 .vercel
