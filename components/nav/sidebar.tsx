@@ -180,7 +180,9 @@ function OnboardingLink({ collapsed }: { collapsed: boolean }) {
       onMouseLeave={() => setTipY(null)}
     >
       <Link
-        href="/onboarding"
+        // 原本指向登入前的偏好收集頁，該頁已移除；「完善資料」實際要做的事
+        // 就是把個人檔案庫填完整（所有履歷都從那份資料生成）
+        href="/profile-library"
         className={cn(
           'flex items-center rounded-lg text-sm text-ink-400 hover:text-ink-600 transition-colors',
           collapsed ? 'justify-center py-2.5 px-0 mx-1' : 'gap-3 px-3 py-2'

@@ -119,8 +119,9 @@ const TASK_PRESETS: Record<string, TaskDef[]> = {
   ],
 }
 
-// 承接 /onboarding（登入前）寫的舊格式，換算成這裡看得懂的 status/goal，
-// 避免使用者在 /onboarding 填過一次之後，進 Dashboard 又被 WelcomeModal 重問一次。
+// 承接舊版「登入前 /onboarding」寫在瀏覽器裡的格式，換算成這裡看得懂的 status/goal。
+// 該頁已移除（改為登入後統一由 WelcomeModal 詢問），但舊使用者的瀏覽器可能還留著
+// 這筆資料，保留轉換邏輯讓他們不會被重問一次。
 const STAGE_TO_STATUS: Record<string, string> = {
   student: 'fresh_grad',
   fresh: 'fresh_grad',
