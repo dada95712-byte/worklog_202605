@@ -33,7 +33,13 @@ interface CompanyGroup {
   lastDate: string
 }
 
-interface CareerInsightEvidenceItem { journalId: string; journalTitle: string; journalDate: string | null; excerpt: string }
+interface CareerInsightEvidenceItem {
+  journalId: string
+  journalTitle: string
+  companyName: string | null
+  journalDate: string | null
+  excerpt: string
+}
 interface CareerInsightItem {
   id: string
   text: string
@@ -1501,11 +1507,26 @@ export default function WorkJournalPage() {
                       </div>
                       {isExpanded && (
                         <div className="pl-5 space-y-1.5 pt-1">
+                          {/* 來源呈現與技能證據一致：標題 / 公司 · 日期 /「逐字引用」，
+                              可點擊開啟該篇日誌詳情（同頁直接切換，不必繞一次路由） */}
                           {ins.evidence.map((e) => (
-                            <div key={e.journalId} className="text-xs bg-white border border-warm-100 rounded-lg px-3 py-2">
-                              <p className="text-ink-400 mb-0.5">· {e.journalTitle || e.journalId}{e.journalDate && ` · ${fmtDate(e.journalDate)}`}</p>
-                              <p className="text-ink-600">「{e.excerpt}」</p>
-                            </div>
+                            <button
+                              key={e.journalId}
+                              type="button"
+                              onClick={() => { const j = entries.find((x) => x.id === e.journalId); if (j) { setDetailEntry(j); setInterviewMatches(null); setView('detail') } }}
+                              disabled={!entries.some((x) => x.id === e.journalId)}
+                              className="block w-full text-left text-xs bg-white border border-warm-100 rounded-lg px-3 py-2 hover:border-terra-200 hover:shadow-[var(--shadow-warm-sm)] disabled:hover:border-warm-100 disabled:hover:shadow-none transition-all"
+                            >
+                              <p className="text-ink-700 font-medium">{e.journalTitle || e.journalId}</p>
+                              {(e.companyName || e.journalDate) && (
+                                <p className="text-[10px] text-ink-400 mt-0.5 flex flex-wrap items-center gap-x-1.5">
+                                  {e.companyName && <span className="break-words">{e.companyName}</span>}
+                                  {e.companyName && e.journalDate && <span aria-hidden>·</span>}
+                                  {e.journalDate && <span className="tabular-nums whitespace-nowrap">{fmtDate(e.journalDate)}</span>}
+                                </p>
+                              )}
+                              <p className="text-ink-600 mt-1">「{e.excerpt}」</p>
+                            </button>
                           ))}
                         </div>
                       )}
@@ -1625,11 +1646,26 @@ export default function WorkJournalPage() {
                       </div>
                       {isExpanded && (
                         <div className="pl-5 space-y-1.5 pt-1">
+                          {/* 來源呈現與技能證據一致：標題 / 公司 · 日期 /「逐字引用」，
+                              可點擊開啟該篇日誌詳情（同頁直接切換，不必繞一次路由） */}
                           {ins.evidence.map((e) => (
-                            <div key={e.journalId} className="text-xs bg-white border border-warm-100 rounded-lg px-3 py-2">
-                              <p className="text-ink-400 mb-0.5">· {e.journalTitle || e.journalId}{e.journalDate && ` · ${fmtDate(e.journalDate)}`}</p>
-                              <p className="text-ink-600">「{e.excerpt}」</p>
-                            </div>
+                            <button
+                              key={e.journalId}
+                              type="button"
+                              onClick={() => { const j = entries.find((x) => x.id === e.journalId); if (j) { setDetailEntry(j); setInterviewMatches(null); setView('detail') } }}
+                              disabled={!entries.some((x) => x.id === e.journalId)}
+                              className="block w-full text-left text-xs bg-white border border-warm-100 rounded-lg px-3 py-2 hover:border-terra-200 hover:shadow-[var(--shadow-warm-sm)] disabled:hover:border-warm-100 disabled:hover:shadow-none transition-all"
+                            >
+                              <p className="text-ink-700 font-medium">{e.journalTitle || e.journalId}</p>
+                              {(e.companyName || e.journalDate) && (
+                                <p className="text-[10px] text-ink-400 mt-0.5 flex flex-wrap items-center gap-x-1.5">
+                                  {e.companyName && <span className="break-words">{e.companyName}</span>}
+                                  {e.companyName && e.journalDate && <span aria-hidden>·</span>}
+                                  {e.journalDate && <span className="tabular-nums whitespace-nowrap">{fmtDate(e.journalDate)}</span>}
+                                </p>
+                              )}
+                              <p className="text-ink-600 mt-1">「{e.excerpt}」</p>
+                            </button>
                           ))}
                         </div>
                       )}

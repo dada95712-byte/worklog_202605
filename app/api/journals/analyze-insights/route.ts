@@ -162,7 +162,8 @@ export async function GET() {
     orderBy: { createdAt: 'desc' },
     include: {
       evidence: {
-        include: { journal: { select: { id: true, title: true, date: true } } },
+        // 公司與日期一律從來源日誌帶出，與技能證據（/api/skills）採同一套做法
+        include: { journal: { select: { id: true, title: true, company: true, date: true } } },
         orderBy: { createdAt: 'asc' },
       },
     },
@@ -177,7 +178,9 @@ export async function GET() {
       evidence: i.evidence.map((e) => ({
         journalId: e.journalId,
         journalTitle: e.journal?.title ?? '',
-        journalDate: e.journal?.date ?? null,
+        // 查不到就回 null，前端整欄不渲染，不用「未知」佔位
+        companyName: e.journal?.company?.trim() || null,
+        journalDate: e.journal?.date?.toISOString() ?? null,
         excerpt: e.evidenceExcerpt,
       })),
     })),

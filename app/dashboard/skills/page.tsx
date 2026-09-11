@@ -2,16 +2,26 @@
 
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { RateLimitToast } from '@/components/ui/rate-limit-toast'
 import { PageTooltip } from '@/components/onboarding/page-tooltip'
+import { fmtDate } from '@/lib/utils'
+import { journalDetailHref } from '@/lib/journal-link'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
 const SKILL_CATEGORIES = ['專業技能', '工具與軟體', '核心職能', '軟實力', '語言能力', '證照與認證', '學習中'] as const
 type SkillCategory = typeof SKILL_CATEGORIES[number]
-interface SkillEvidenceOut { journalId: string; journalTitle: string; excerpt: string }
+// 與 /api/skills 回傳一致；公司與日期一律來自來源日誌，查不到就是 null（整欄不渲染）
+interface SkillEvidenceOut {
+  journalId: string
+  journalTitle: string
+  companyName: string | null
+  journalDate: string | null
+  excerpt: string
+}
 interface TaggedSkill {
   name: string
   category: SkillCategory
@@ -158,6 +168,7 @@ function SkillChip({
 // ── Component ──────────────────────────────────────────────────────────────────
 
 export default function SkillsPage() {
+  const router = useRouter()
   const [skills, setSkills]           = useState<TaggedSkill[]>([])
   const [newSkill, setNewSkill]       = useState('')
   const [newSkillCat, setNewSkillCat] = useState<SkillCategory>('核心職能')
@@ -676,11 +687,25 @@ ${skills.map((s) => `${s.name}（${s.category}）`).join('、')}
                   </div>
                   {isExpanded && (
                     <div className="pl-5 space-y-1.5">
+                      {/* 來源卡片與技能地圖「來自工作日誌的技能頻率」採同一套呈現：
+                          標題 / 公司 · 日期 /「逐字引用」，整張卡片可點擊跳回原始日誌 */}
                       {evidence.map((e) => (
-                        <div key={e.journalId} className="text-xs bg-cream-50 border border-warm-100 rounded-lg px-3 py-2">
-                          <p className="text-ink-400 mb-0.5">· {e.journalTitle || journalEntriesMap[e.journalId] || e.journalId}</p>
-                          <p className="text-ink-600">「{e.excerpt}」</p>
-                        </div>
+                        <button
+                          key={e.journalId}
+                          type="button"
+                          onClick={() => router.push(journalDetailHref(e.journalId))}
+                          className="block w-full text-left text-xs bg-cream-50 border border-warm-100 rounded-lg px-3 py-2 cursor-pointer hover:border-terra-200 hover:shadow-[var(--shadow-warm-sm)] transition-all"
+                        >
+                          <p className="text-ink-700 font-medium">{e.journalTitle || journalEntriesMap[e.journalId] || e.journalId}</p>
+                          {(e.companyName || e.journalDate) && (
+                            <p className="text-[10px] text-ink-400 mt-0.5 flex flex-wrap items-center gap-x-1.5">
+                              {e.companyName && <span className="break-words">{e.companyName}</span>}
+                              {e.companyName && e.journalDate && <span aria-hidden>·</span>}
+                              {e.journalDate && <span className="tabular-nums whitespace-nowrap">{fmtDate(e.journalDate)}</span>}
+                            </p>
+                          )}
+                          <p className="text-ink-600 mt-1">「{e.excerpt}」</p>
+                        </button>
                       ))}
                     </div>
                   )}
