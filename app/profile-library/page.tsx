@@ -1079,11 +1079,6 @@ export default function ProfileLibraryPage() {
             onChange={e => { const f = e.target.files?.[0]; if (f) { handleImportFile(f); e.target.value = '' } }} />
         </div>
 
-        {/* Data source explanation */}
-        <div className="bg-sage-50 border-l-4 border-l-sage-400 rounded-xl px-4 py-3 text-sm text-sage-700">
-          這裡填基本資訊、學歷、工作經歷、證照與語言；技能與成就不用填，工作日誌會自動萃取，建立履歷時兩邊都會取用。
-        </div>
-
         {/* Progress bar */}
         <div className="rounded-2xl border border-warm-200 bg-white p-4">
           <div className="flex items-center justify-between mb-1.5">
