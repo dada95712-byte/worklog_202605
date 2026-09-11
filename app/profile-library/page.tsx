@@ -1081,7 +1081,8 @@ export default function ProfileLibraryPage() {
 
         {/* Data source explanation */}
         <div className="bg-sage-50 border-l-4 border-l-sage-400 rounded-xl px-4 py-3 text-sm text-sage-700">
-          個人檔案庫是你所有職涯資料的唯一來源，「履歷」頁建立的所有履歷都從這裡取得資料。
+          個人檔案庫存放你的個人背景資料——基本資訊、學歷、工作經歷、證照、語言。
+          建立履歷時會自動取用這裡的資料；工作日誌萃取出的技能與成就，則會另外補進履歷的工作描述。
         </div>
 
         {/* Progress bar */}

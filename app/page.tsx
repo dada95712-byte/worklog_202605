@@ -7,7 +7,7 @@ const LAYERS = [
     color: 'bg-terra-50 border-terra-100',
     items: [
       { emoji: '📓', title: '工作日誌',   href: '/work-journal',    sub: 'STAR／自由／AI 引導記錄 · 自動萃取技能與成就' },
-      { emoji: '🗂️', title: '個人檔案庫', href: '/profile-library', sub: '職涯資料的唯一來源 · 履歷自動取用' },
+      { emoji: '🗂️', title: '個人檔案庫', href: '/profile-library', sub: '基本資訊／學歷／經歷／證照 · 履歷自動取用' },
       { emoji: '🌱', title: '技能地圖',   href: '/skill-map',       sub: '技能分類全覽 · 日誌技能頻率 · 缺口累積' },
     ],
   },
