@@ -1134,7 +1134,7 @@ export default function WorkJournalPage() {
       {/* Header */}
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-xl md:text-2xl font-bold text-ink-900">✍ Work Journal</h1>
+          <h1 className="text-xl md:text-2xl font-bold text-ink-900">✍ 工作日誌</h1>
           <p className="mt-1 text-xs md:text-sm text-ink-500">記錄工作成就 · 整理面試素材</p>
         </div>
         <button onClick={startNew}

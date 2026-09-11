@@ -52,13 +52,14 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         style={{ background: '#F3ECE4', borderRight: '1px solid #E6DDD2' }}>
         {/* Close button */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-warm-200">
-          <div className="flex items-center gap-2">
+          {/* Logo 點擊回首頁（landing page），跟桌機版側邊欄一致 */}
+          <Link href="/" title="回首頁" className="flex items-center gap-2 rounded-lg transition-opacity hover:opacity-70">
             <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-terra-500 text-white text-[11px] font-bold">W</div>
             <div>
               <p className="text-sm font-semibold text-ink-900 leading-none">WorkLog</p>
               <p className="text-[10px] text-ink-300 mt-0.5">工作記錄・職涯累積</p>
             </div>
-          </div>
+          </Link>
           <button
             onClick={() => setDrawerOpen(false)}
             aria-label="關閉選單"

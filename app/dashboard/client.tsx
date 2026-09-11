@@ -35,21 +35,21 @@ const STATUS_CFG: Record<string, { label: string; dot: string; textColor: string
   hr_screen:    { label: '人資初篩', dot: 'bg-honey-400', textColor: 'text-honey-500' },
   phone_screen: { label: '電話面試', dot: 'bg-honey-400', textColor: 'text-honey-500' },
   interview:    { label: '面試中',   dot: 'bg-terra-400', textColor: 'text-terra-600' },
+  // 求職追蹤實際使用的狀態，缺了會 fallback 成「已儲存」顯示錯誤
+  manager_interview: { label: '主管面試',   dot: 'bg-terra-400', textColor: 'text-terra-600' },
+  gm_interview:      { label: '總經理面試', dot: 'bg-terra-400', textColor: 'text-terra-600' },
+  rejected:          { label: '未錄取',     dot: 'bg-warm-300',  textColor: 'text-ink-400' },
   offer:        { label: 'Offer ✓', dot: 'bg-sage-500',  textColor: 'text-sage-700' },
 }
 
-const PIPELINE_ITEMS = [
-  { company: 'LINE Taiwan', role: '前端工程師',    status: 'interview',   daysAgo: 0 },
-  { company: '台積電',       role: '軟體工程師',    status: 'applied',     daysAgo: 3 },
-  { company: 'Shopee',      role: 'Frontend Lead', status: 'saved',       daysAgo: 1 },
-]
+// 面試階段（用於「面試邀請」統計）
+const INTERVIEW_STATUSES = ['hr_screen', 'phone_screen', 'interview', 'manager_interview', 'gm_interview']
 
-const SCORE_BREAKDOWN = [
-  { label: '履歷',     value: 0,  max: 30, color: '#C97941', note: '尚未上傳',   href: '/resume-lab' },
-  { label: '技能庫',   value: 10, max: 20, color: '#7FA887', note: '10 項技能',  href: '/dashboard/skills' },
-  { label: '職缺追蹤', value: 15, max: 25, color: '#D4A25A', note: '4 筆記錄',   href: '/jobs' },
-  { label: '面試練習', value: 0,  max: 25, color: '#B8A090', note: '0 道練習',   href: '/interviews' },
-]
+// Dashboard 的數字一律由各模組的實際資料推導（見 useDashboardData），
+// 不放任何寫死的示範值——首頁顯示假數字會讓使用者無法判斷哪些是自己的真實進度
+// 五個模組各自的滿分配額，合計 100。原本只有四項（履歷30/技能20/職缺25/面試25），
+// 工作日誌完全沒有計分——但它是「累積層」的第一個模組，重新配額把它納入
+const SCORE_MAX = { resume: 25, skill: 20, journal: 15, job: 20, interview: 20 } as const
 
 const QUICK_LINKS = [
   { label: '上傳履歷', href: '/resume-lab',  symbol: '↑',  bg: '#FBF2EA', border: '#EDD9C8', color: '#C97941' },
@@ -253,9 +253,79 @@ function Checkbox({ done, onToggle }: { done: boolean; onToggle: () => void }) {
   )
 }
 
+// ── 各模組實際資料 ─────────────────────────────────────────────────────────────
+
+interface DashApp {
+  id: string; company: string; jobTitle: string; status: string
+  appliedAt?: string; createdAt?: string
+}
+
+interface DashboardData {
+  apps: DashApp[]
+  resumeCount: number
+  avgAts: number | null
+  skillCount: number
+  journalCount: number
+  interviewSessions: number
+  loaded: boolean
+}
+
+// Dashboard 的每一個數字都從對應模組的 API 拉真實資料，
+// 任一支失敗不影響其他區塊（Promise.allSettled），沒有資料就顯示空狀態而不是假數字
+function useDashboardData(): DashboardData {
+  const [data, setData] = useState<DashboardData>({
+    apps: [], resumeCount: 0, avgAts: null, skillCount: 0,
+    journalCount: 0, interviewSessions: 0, loaded: false,
+  })
+
+  useEffect(() => {
+    const j = (r: Response) => (r.ok ? r.json() : null)
+    Promise.allSettled([
+      fetch('/api/tracker').then(j),
+      fetch('/api/resumes').then(j),
+      fetch('/api/skills').then(j),
+      fetch('/api/work-journal').then(j),
+    ]).then(([trackerRes, resumeRes, skillRes, journalRes]) => {
+      const tracker = trackerRes.status === 'fulfilled' ? trackerRes.value : null
+      const resumes = resumeRes.status === 'fulfilled' ? resumeRes.value : null
+      const skills  = skillRes.status === 'fulfilled' ? skillRes.value : null
+      const journal = journalRes.status === 'fulfilled' ? journalRes.value : null
+
+      const resumeList: { score: number | null; atsScore: number | null }[] = resumes?.resumes ?? []
+      const scored = resumeList.map((r) => r.atsScore ?? r.score).filter((s): s is number => typeof s === 'number')
+
+      // 面試練習記錄目前仍存在瀏覽器端（尚未接資料庫），沿用面試練習頁同一個 key
+      let interviewSessions = 0
+      try {
+        const raw = localStorage.getItem('interview-mock-sessions')
+        if (raw) interviewSessions = (JSON.parse(raw) as unknown[]).length
+      } catch { /* ignore */ }
+
+      setData({
+        apps: tracker?.applications ?? [],
+        resumeCount: resumeList.length,
+        avgAts: scored.length > 0 ? Math.round(scored.reduce((a, b) => a + b, 0) / scored.length) : null,
+        skillCount: (skills?.skills ?? []).filter((s: { isManual?: boolean; isConfirmed?: boolean }) => s.isManual || s.isConfirmed).length,
+        journalCount: (journal?.entries ?? []).length,
+        interviewSessions,
+        loaded: true,
+      })
+    })
+  }, [])
+
+  return data
+}
+
+function daysSince(iso?: string) {
+  if (!iso) return null
+  const diff = Date.now() - new Date(iso).getTime()
+  return Math.max(0, Math.floor(diff / 86400000))
+}
+
 // ── Main Component ─────────────────────────────────────────────────────────────
 
 export function DashboardClient({ name }: { name: string }) {
+  const live = useDashboardData()
   const [moodLogs,     setMoodLogs]     = useState<MoodEntry[]>([])
   const [todayMood,    setTodayMood]    = useState<string | null>(null)
   const [doneTaskIds,  setDoneTaskIds]  = useState<Set<string>>(new Set())
@@ -372,7 +442,58 @@ export function DashboardClient({ name }: { name: string }) {
   const showEncouragement = last7Days.slice(-3).map(d => d.mood)
     .every(m => m !== null && NEGATIVE_MOODS.has(m))
 
-  const totalScore    = SCORE_BREAKDOWN.reduce((s, b) => s + b.value, 0)
+  // ── Career Score：各項都依實際資料量換算，沒有資料就是 0 分 ──
+  const scoreBreakdown = useMemo(() => {
+    const cap = (n: number, max: number) => Math.min(n, max)
+    return [
+      {
+        label: '履歷', max: SCORE_MAX.resume, color: '#C97941', href: '/resume-lab',
+        // 有履歷就拿基本分，評分過的再依平均分數加權
+        value: live.resumeCount === 0 ? 0 : cap(8 + Math.round(((live.avgAts ?? 0) / 100) * 17), SCORE_MAX.resume),
+        note: live.resumeCount === 0 ? '尚未建立'
+          : live.avgAts !== null ? `${live.resumeCount} 份・ATS 均分 ${live.avgAts}`
+          : `${live.resumeCount} 份・尚未評分`,
+      },
+      {
+        label: '技能庫', max: SCORE_MAX.skill, color: '#7FA887', href: '/dashboard/skills',
+        value: cap(live.skillCount, SCORE_MAX.skill),
+        note: live.skillCount === 0 ? '尚未建立' : `${live.skillCount} 項技能`,
+      },
+      {
+        label: '工作日誌', max: SCORE_MAX.journal, color: '#A88FC4', href: '/work-journal',
+        value: cap(live.journalCount * 3, SCORE_MAX.journal),
+        note: live.journalCount === 0 ? '尚未記錄' : `${live.journalCount} 篇日誌`,
+      },
+      {
+        label: '職缺追蹤', max: SCORE_MAX.job, color: '#D4A25A', href: '/jobs',
+        value: cap(live.apps.length * 5, SCORE_MAX.job),
+        note: live.apps.length === 0 ? '尚未追蹤' : `${live.apps.length} 筆記錄`,
+      },
+      {
+        label: '面試練習', max: SCORE_MAX.interview, color: '#B8A090', href: '/interviews',
+        value: cap(live.interviewSessions * 5, SCORE_MAX.interview),
+        note: live.interviewSessions === 0 ? '尚未練習' : `${live.interviewSessions} 次練習`,
+      },
+    ]
+  }, [live])
+
+  const totalScore = scoreBreakdown.reduce((s, b) => s + b.value, 0)
+
+  // ── 統計列：本週投遞／ATS 平均／面試邀請，全部來自真實資料 ──
+  const stats = useMemo(() => {
+    const now = Date.now()
+    const within = (iso: string | undefined, fromDaysAgo: number, toDaysAgo: number) => {
+      if (!iso) return false
+      const d = (now - new Date(iso).getTime()) / 86400000
+      return d >= toDaysAgo && d < fromDaysAgo
+    }
+    const thisWeek = live.apps.filter((a) => within(a.appliedAt, 7, 0)).length
+    const lastWeek = live.apps.filter((a) => within(a.appliedAt, 14, 7)).length
+    const delta = thisWeek - lastWeek
+    const interviewing = live.apps.filter((a) => INTERVIEW_STATUSES.includes(a.status)).length
+    return { thisWeek, delta, interviewing }
+  }, [live])
+
   const completedCount = doneTaskIds.size
   const totalTasks    = todayTasks.length
   const allTasksDone  = completedCount >= totalTasks && totalTasks > 0
@@ -509,7 +630,7 @@ export function DashboardClient({ name }: { name: string }) {
 
             {/* Breakdown */}
             <div className="space-y-3.5">
-              {SCORE_BREAKDOWN.map((b) => {
+              {scoreBreakdown.map((b) => {
                 const pct = Math.round((b.value / b.max) * 100)
                 return (
                   <Link key={b.label} href={b.href} className="block group">
@@ -585,9 +706,23 @@ export function DashboardClient({ name }: { name: string }) {
         {/* ── STATS ROW ──────────────────────────────────────────────────────── */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {[
-            { label: '本週投遞', value: '2',  sub: '較上週 +1',  color: '#C97941' },
-            { label: 'ATS 平均', value: '—',  sub: '上傳後顯示', color: '#B8A090' },
-            { label: '面試邀請', value: '1',  sub: '進行中',     color: '#7FA887' },
+            {
+              label: '本週投遞', color: '#C97941',
+              value: live.loaded ? `${stats.thisWeek}` : '—',
+              sub: !live.loaded ? '載入中…'
+                : stats.delta === 0 ? '與上週持平'
+                : stats.delta > 0 ? `較上週 +${stats.delta}` : `較上週 ${stats.delta}`,
+            },
+            {
+              label: 'ATS 平均', color: '#B8A090',
+              value: live.avgAts !== null ? `${live.avgAts}` : '—',
+              sub: !live.loaded ? '載入中…' : live.avgAts !== null ? `${live.resumeCount} 份履歷` : '履歷評分後顯示',
+            },
+            {
+              label: '面試邀請', color: '#7FA887',
+              value: live.loaded ? `${stats.interviewing}` : '—',
+              sub: !live.loaded ? '載入中…' : stats.interviewing > 0 ? '進行中' : '尚無面試中職缺',
+            },
             { label: '今日完成', value: `${completedCount}`, sub: `共 ${totalTasks} 項`, color: '#D4A25A' },
           ].map((s) => (
             <div key={s.label} className="rounded-2xl px-4 py-3.5"
@@ -612,10 +747,16 @@ export function DashboardClient({ name }: { name: string }) {
               </Link>
             </div>
             <div className="space-y-1.5">
-              {PIPELINE_ITEMS.map((item, i) => {
+              {live.loaded && live.apps.length === 0 && (
+                <p className="py-6 text-center text-xs" style={{ color: '#B8A890' }}>
+                  還沒有追蹤中的職缺，新增後這裡會顯示最近的進度。
+                </p>
+              )}
+              {live.apps.slice(0, 4).map((item) => {
                 const cfg = STATUS_CFG[item.status] ?? STATUS_CFG.saved
+                const days = daysSince(item.appliedAt ?? item.createdAt)
                 return (
-                  <Link key={i} href="/jobs"
+                  <Link key={item.id} href="/jobs"
                     className="flex items-center gap-3 rounded-xl px-3 py-2.5 transition-colors"
                     style={{ background: '#FAF7F4' }}
                     onMouseEnter={e => (e.currentTarget.style.background = '#F3ECE4')}
@@ -623,13 +764,15 @@ export function DashboardClient({ name }: { name: string }) {
                     <div className={`h-2 w-2 rounded-full shrink-0 ${cfg.dot}`} />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium truncate" style={{ color: '#4B4038' }}>{item.company}</p>
-                      <p className="text-xs truncate" style={{ color: '#9E8E84' }}>{item.role}</p>
+                      <p className="text-xs truncate" style={{ color: '#9E8E84' }}>{item.jobTitle}</p>
                     </div>
                     <div className="text-right shrink-0">
                       <p className={`text-xs font-medium ${cfg.textColor}`}>{cfg.label}</p>
-                      <p className="text-[10px] mt-0.5" style={{ color: '#C4B8B2' }}>
-                        {item.daysAgo === 0 ? '今天' : `${item.daysAgo} 天前`}
-                      </p>
+                      {days !== null && (
+                        <p className="text-[10px] mt-0.5" style={{ color: '#C4B8B2' }}>
+                          {days === 0 ? '今天' : `${days} 天前`}
+                        </p>
+                      )}
                     </div>
                   </Link>
                 )

@@ -79,7 +79,7 @@ const navItems = [
   },
   {
     href: '/career-coach',
-    label: 'AI 教練',
+    label: 'AI 職涯教練',
     icon: (
       <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
         <path d="m3 21 1.9-5.7a8.5 8.5 0 1 1 3.8 3.8z" />
@@ -241,7 +241,12 @@ export function Sidebar({ mobileDrawer = false }: { mobileDrawer?: boolean }) {
           'flex items-center shrink-0',
           collapsed ? 'justify-between px-2 py-4' : 'justify-between px-5 py-5'
         )} style={{ borderBottom: '1px solid #E6DDD2' }}>
-          <div className={cn('flex items-center min-w-0', !collapsed && 'gap-2.5')}>
+          {/* Logo 點擊回首頁（landing page）—— 進到功能區後原本沒有任何路徑回得去 */}
+          <Link
+            href="/"
+            title="回首頁"
+            className={cn('flex items-center min-w-0 rounded-lg transition-opacity hover:opacity-70', !collapsed && 'gap-2.5')}
+          >
             <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-terra-500 text-white text-[11px] font-bold shrink-0 shadow-[var(--shadow-warm-sm)]">
               W
             </div>
@@ -251,7 +256,7 @@ export function Sidebar({ mobileDrawer = false }: { mobileDrawer?: boolean }) {
                 <p className="text-[10px] text-ink-300 mt-0.5">工作記錄・職涯累積・求職準備</p>
               </div>
             )}
-          </div>
+          </Link>
           <button
             onClick={toggle}
             title={collapsed ? '展開側邊欄' : '收合側邊欄'}

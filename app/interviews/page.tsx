@@ -490,7 +490,7 @@ export default function InterviewPrepPage() {
   // PDF generation
   const [pdfGenerating, setPdfGenerating] = useState(false)
 
-  // Application Tracker integration
+  // 求職追蹤 integration
   const [fromJobId, setFromJobId]       = useState<string | null>(null)
   const [fromTitle, setFromTitle]       = useState<string | null>(null)
   const [fromCompany, setFromCompany]   = useState<string | null>(null)
@@ -779,7 +779,7 @@ export default function InterviewPrepPage() {
         id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
         date: new Date().toISOString().slice(0, 10),
         interviewer: '模擬面試',
-        notes: `來自 Interview Arena 模擬練習｜題數：${questions.length}｜平均分：${report.avgScore.toFixed(1)}/10`,
+        notes: `來自 面試練習 模擬練習｜題數：${questions.length}｜平均分：${report.avgScore.toFixed(1)}/10`,
       }
       const updated = apps.map((a) =>
         a.id === fromJobId ? { ...a, interviewNotes: [...(a.interviewNotes ?? []), note] } : a
@@ -1095,7 +1095,7 @@ ${answered.map((q, i) => `題${i + 1}（${TYPE[q.type]?.label}）：${q.question
     <div className="p-4 pt-16 md:pt-8 md:p-8 space-y-5">
       <PageTooltip pageKey="interviews" />
       <div>
-        <h1 className="text-xl md:text-2xl font-bold text-ink-900">⬟ Interview Arena</h1>
+        <h1 className="text-xl md:text-2xl font-bold text-ink-900">⬟ 面試練習</h1>
         <p className="mt-1 text-sm text-ink-500">AI 模擬面試 · 常見題庫 · 實際面試記錄 · PDF 匯出</p>
       </div>
 
@@ -1121,7 +1121,7 @@ ${answered.map((q, i) => `題${i + 1}（${TYPE[q.type]?.label}）：${q.question
           {journalLinkedQ && (
             <div className="flex items-center gap-2 rounded-xl border border-sage-200 bg-sage-50 px-4 py-3 text-sm text-sage-700 mb-4">
               <span>📓</span>
-              <span className="flex-1">來自 Work Journal，已帶入 STAR 草稿供參考</span>
+              <span className="flex-1">來自 工作日誌，已帶入 STAR 草稿供參考</span>
               {journalLinkedFromId && (
                 <a href="/work-journal" className="text-xs text-sage-500 hover:text-sage-700 whitespace-nowrap transition-colors">← 返回日誌</a>
               )}
@@ -1333,7 +1333,7 @@ ${answered.map((q, i) => `題${i + 1}（${TYPE[q.type]?.label}）：${q.question
               {/* Sage banner */}
               <div className="flex items-center gap-2 rounded-xl border border-sage-200 bg-sage-50 px-4 py-3 text-sm text-sage-700">
                 <span>📋</span>
-                <span className="flex-1">來自 Application Tracker：<strong>{fromCompany}</strong> — <strong>{fromTitle}</strong></span>
+                <span className="flex-1">來自 求職追蹤：<strong>{fromCompany}</strong> — <strong>{fromTitle}</strong></span>
                 <button onClick={clearTrackerLink}
                   className="ml-2 text-xs text-sage-500 hover:text-sage-700 whitespace-nowrap transition-colors">
                   ✕ 清除，重新設定
@@ -1364,7 +1364,7 @@ ${answered.map((q, i) => `題${i + 1}（${TYPE[q.type]?.label}）：${q.question
                     <div className="space-y-1">
                       <div className="flex items-center justify-between">
                         <label className="text-xs font-medium text-ink-500">公司</label>
-                        <span className="text-[10px] text-ink-300">來自 Application Tracker</span>
+                        <span className="text-[10px] text-ink-300">來自 求職追蹤</span>
                       </div>
                       <div className="rounded-lg border border-warm-200 bg-cream-50 px-4 py-3 text-sm text-ink-700">{fromCompany}</div>
                     </div>
@@ -1742,7 +1742,7 @@ ${answered.map((q, i) => `題${i + 1}（${TYPE[q.type]?.label}）：${q.question
                     <button
                       onClick={() => setStarDraftPanelOpen((p) => !p)}
                       className="w-full flex items-center justify-between px-4 py-2.5 bg-sage-50 hover:bg-sage-100 transition-colors text-left">
-                      <span className="text-xs font-semibold text-sage-700">📓 參考草稿（來自 Work Journal）</span>
+                      <span className="text-xs font-semibold text-sage-700">📓 參考草稿（來自 工作日誌）</span>
                       <span className="text-xs text-sage-500">{starDraftPanelOpen ? '▲ 收起' : '▼ 展開'}</span>
                     </button>
                     {starDraftPanelOpen && (
@@ -2234,7 +2234,7 @@ ${answered.map((q, i) => `題${i + 1}（${TYPE[q.type]?.label}）：${q.question
                           onClick={saveToTracker}
                           disabled={saveTrackerStatus === 'saving'}
                           className="flex items-center gap-2 rounded-xl border border-sage-200 bg-white px-4 py-2.5 text-sm text-sage-700 hover:bg-sage-50 hover:border-sage-300 transition-colors disabled:opacity-50">
-                          📌 儲存此次面試記錄到 Application Tracker
+                          📌 儲存此次面試記錄到 求職追蹤
                         </button>
                       )
                     )}

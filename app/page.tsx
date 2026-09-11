@@ -18,7 +18,7 @@ const LAYERS = [
     items: [
       { emoji: '📄', title: '履歷',     href: '/resume-lab',   sub: 'AI 解析履歷 · ATS 評分 · 關鍵字優化' },
       { emoji: '💬', title: '面試練習', href: '/interviews',   sub: 'AI 模擬面試 · STAR 評分 · 雙語練習' },
-      { emoji: '🤖', title: 'AI 教練',  href: '/career-coach', sub: '24hr 對話教練 · 個人化職涯建議' },
+      { emoji: '🤖', title: 'AI 職涯教練',  href: '/career-coach', sub: '24hr 對話教練 · 個人化職涯建議' },
     ],
   },
   {

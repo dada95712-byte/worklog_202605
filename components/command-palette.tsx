@@ -7,11 +7,11 @@ import { cn } from '@/lib/utils'
 
 const NAV = [
   { label: 'Dashboard',       href: '/dashboard',            icon: '⬡',  shortcut: 'G D' },
-  { label: 'Resume Lab',      href: '/resume-lab',       icon: '◈',  shortcut: 'G R' },
-  { label: 'Job Pipeline',    href: '/jobs',         icon: '◎',  shortcut: 'G J' },
-  { label: 'Skill Map',       href: '/skill-map',        icon: '◈',  shortcut: 'G S' },
-  { label: 'Interview Arena', href: '/interviews',       icon: '⬟',  shortcut: 'G I' },
-  { label: 'Analytics',       href: '/analytics',  icon: '◉',  shortcut: 'G A' },
+  { label: '履歷',            href: '/resume-lab',       icon: '◈',  shortcut: 'G R' },
+  { label: '求職追蹤',    href: '/jobs',         icon: '◎',  shortcut: 'G J' },
+  { label: '技能地圖',       href: '/skill-map',        icon: '◈',  shortcut: 'G S' },
+  { label: '面試練習', href: '/interviews',       icon: '⬟',  shortcut: 'G I' },
+  { label: '職缺分析',       href: '/analytics',  icon: '◉',  shortcut: 'G A' },
 ]
 
 const ACTIONS = [

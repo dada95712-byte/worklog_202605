@@ -1645,7 +1645,7 @@ export default function ApplicationTrackerPage() {
       <PageTooltip pageKey="application_tracker" />
       {/* Header */}
       <div>
-        <h1 className="text-xl md:text-2xl font-bold text-ink-900">◎ Application Tracker</h1>
+        <h1 className="text-xl md:text-2xl font-bold text-ink-900">◎ 求職追蹤</h1>
         <p className="mt-1 text-sm text-ink-500">管理你的求職進度，AI 分析職缺匹配度</p>
       </div>
 

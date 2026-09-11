@@ -50,7 +50,7 @@ interface ResumeEntry {
 
 const TABS = ['resume'] as const
 type Tab = typeof TABS[number]
-const TAB_LABELS: Record<Tab, string> = { resume: '◈ Resume Lab' }
+const TAB_LABELS: Record<Tab, string> = { resume: '◈ 履歷' }
 
 const RESUME_TEMPLATES = [
   { id: 'freshman',     emoji: '🎓', label: '新鮮人', desc: '剛畢業，強調學習能力',    data: { name: '王小明', email: 'example@gmail.com',    phone: '0912-345-678', skills: ['Python', 'Microsoft Office', '數據分析', '快速學習', '英文溝通'],              experiences: [{ company: '某科技公司', title: '暑期實習生',     description: '協助開發內部工具，參與敏捷開發流程' }],                                                                        education: [{ school: '國立台灣大學', degree: '學士', major: '資訊管理學系', year: '2024' }], rawText: '' } },
@@ -532,7 +532,7 @@ export default function CareerProfilePage() {
       {/* Header */}
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-xl md:text-2xl font-bold text-ink-900">◈ Resume Lab</h1>
+          <h1 className="text-xl md:text-2xl font-bold text-ink-900">◈ 履歷</h1>
           <p className="mt-1 text-xs md:text-sm text-ink-500">履歷管理 · 技能標籤</p>
         </div>
         {saveStatus !== 'idle' && (
@@ -726,7 +726,7 @@ export default function CareerProfilePage() {
                 <div className="bg-cream-50 border border-warm-200 border-dashed rounded-xl p-6 text-center space-y-3">
                   <p className="text-2xl">📁</p>
                   <p className="font-semibold text-ink-700">還沒有個人檔案庫資料？</p>
-                  <p className="text-sm text-ink-500">先前往個人檔案庫上傳履歷或填寫資料，<br/>Resume Lab 將自動引用你的資料建立履歷</p>
+                  <p className="text-sm text-ink-500">先前往個人檔案庫上傳履歷或填寫資料，<br/>這裡會自動引用你的資料建立履歷</p>
                   <Link href="/profile-library"
                     className="inline-block mt-1 rounded-xl bg-terra-500 px-5 py-2 text-sm font-semibold text-white hover:bg-terra-700 transition-colors shadow-[var(--shadow-warm-sm)]">
                     前往個人檔案庫 →
@@ -785,7 +785,7 @@ export default function CareerProfilePage() {
                         <div className="rounded-lg bg-sage-50 border border-sage-200 px-3 py-2 flex items-start gap-2">
                           <span className="text-sage-500 shrink-0 mt-0.5">📋</span>
                           <div className="flex-1 min-w-0">
-                            <p className="text-xs font-medium text-sage-700">來自 Application Tracker</p>
+                            <p className="text-xs font-medium text-sage-700">來自 求職追蹤</p>
                             <p className="text-xs text-sage-600 truncate">{trackerJobCompany}{trackerJobTitle ? ` — ${trackerJobTitle}` : ''}</p>
                           </div>
                           <button
@@ -861,16 +861,16 @@ export default function CareerProfilePage() {
                 </div>
               )}
 
-              {/* Expanded: Application Tracker picker */}
+              {/* Expanded: 求職追蹤 picker */}
               {chooserOpt === 'jd' && jdSubMode === 'tracker' && (
                 <div className="rounded-xl border border-terra-200 bg-white p-5 space-y-3">
-                  <p className="text-sm font-semibold text-ink-700">從 Application Tracker 選擇職缺</p>
+                  <p className="text-sm font-semibold text-ink-700">從 求職追蹤 選擇職缺</p>
                   {trackerApps.length === 0 ? (
                     <div className="py-6 text-center space-y-2">
-                      <p className="text-sm text-ink-400">Application Tracker 尚無紀錄</p>
+                      <p className="text-sm text-ink-400">求職追蹤 尚無紀錄</p>
                       <Link href="/jobs"
                         className="text-sm text-terra-600 hover:text-terra-700 underline underline-offset-2 transition-colors">
-                        前往 Application Tracker →
+                        前往 求職追蹤 →
                       </Link>
                     </div>
                   ) : (

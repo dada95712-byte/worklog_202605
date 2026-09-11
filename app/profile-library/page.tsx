@@ -1070,7 +1070,7 @@ export default function ProfileLibraryPage() {
 
         {/* Data source explanation */}
         <div className="bg-sage-50 border-l-4 border-l-sage-400 rounded-xl px-4 py-3 text-sm text-sage-700">
-          個人檔案庫是你所有職涯資料的唯一來源，Resume Lab 建立的所有履歷都從這裡取得資料。
+          個人檔案庫是你所有職涯資料的唯一來源，「履歷」頁建立的所有履歷都從這裡取得資料。
         </div>
 
         {/* Progress bar */}

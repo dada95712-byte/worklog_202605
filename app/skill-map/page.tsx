@@ -123,7 +123,7 @@ export default function SkillMapPage() {
       {/* ── Header ── */}
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-xl md:text-2xl font-bold text-ink-900">◈ Skill Map</h1>
+          <h1 className="text-xl md:text-2xl font-bold text-ink-900">◈ 技能地圖</h1>
           <p className="mt-1 text-sm text-ink-500">個人技能全貌 · 日誌頻率 · 跨職缺缺口彙整</p>
         </div>
         <Link
@@ -293,7 +293,7 @@ export default function SkillMapPage() {
             <p className="text-2xl">🎯</p>
             <p className="text-sm text-ink-400">尚無匹配分析資料</p>
             <Link href="/jobs" className="inline-block mt-1 text-sm text-terra-500 hover:text-terra-700 transition-colors">
-              前往 Application Tracker 進行 AI 分析 →
+              前往 求職追蹤 進行 AI 分析 →
             </Link>
           </div>
         ) : (
@@ -318,7 +318,7 @@ export default function SkillMapPage() {
             })}
             <p className="pt-2 text-[10px] text-ink-300">
               建議優先補強排名前 3 的技能，可至{' '}
-              <Link href="/work-journal" className="text-terra-400 hover:text-terra-600 transition-colors">Work Journal</Link>{' '}
+              <Link href="/work-journal" className="text-terra-400 hover:text-terra-600 transition-colors">工作日誌</Link>{' '}
               記錄學習過程。
             </p>
           </div>

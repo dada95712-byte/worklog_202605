@@ -317,7 +317,7 @@ export default function SkillsPage() {
         text = entries.map((e) => [e.title, e.content, e.situation, e.task, e.action, e.result].filter(Boolean).join(' ')).join('\n')
       }
     } catch { /* ignore */ }
-    if (!text.trim()) { alert('請先在 Work Journal 新增一些日誌再進行分析'); return }
+    if (!text.trim()) { alert('請先在 工作日誌 新增一些日誌再進行分析'); return }
     setLoadingRecommend(true); setRecommendedSkills([]); setCheckedSkills(new Set()); setShowRecommend(true)
     try {
       const res = await fetch('/api/skills/recommend-from-journal', {
@@ -390,7 +390,7 @@ ${skills.map((s) => `${s.name}（${s.category}）`).join('、')}
       const jRes = await fetch('/api/work-journal')
       if (jRes.ok) { const { entries } = await jRes.json(); journals = entries }
     } catch { /* ignore */ }
-    if (!journals.length) { alert('請先在 Work Journal 新增一些日誌再進行分析'); return }
+    if (!journals.length) { alert('請先在 工作日誌 新增一些日誌再進行分析'); return }
     setAnalyzingJournals(true)
     try {
       const res = await fetch('/api/skills/analyze-from-journals', {
@@ -464,7 +464,7 @@ ${skills.map((s) => `${s.name}（${s.category}）`).join('、')}
         <span className="text-sm text-ink-500 shrink-0">你的技能將用於：</span>
         <Link href="/jobs" className="text-sm font-medium text-terra-600 hover:text-terra-800 transition-colors whitespace-nowrap">🎯 職缺匹配 →</Link>
         <span className="text-ink-300">·</span>
-        <Link href="/skill-map" className="text-sm font-medium text-terra-600 hover:text-terra-800 transition-colors whitespace-nowrap">◈ Skill Map →</Link>
+        <Link href="/skill-map" className="text-sm font-medium text-terra-600 hover:text-terra-800 transition-colors whitespace-nowrap">◈ 技能地圖 →</Link>
         <span className="text-ink-300">·</span>
         <Link href="/interviews" className="text-sm font-medium text-terra-600 hover:text-terra-800 transition-colors whitespace-nowrap">🎤 面試準備 →</Link>
       </div>

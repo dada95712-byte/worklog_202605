@@ -528,7 +528,7 @@ export default function CareerIntelligencePage() {
     <div className="p-4 pt-16 md:pt-8 md:p-8 space-y-5">
       <PageTooltip pageKey="analytics" />
       <div>
-        <h1 className="text-xl md:text-2xl font-bold text-ink-900">◉ Analytics</h1>
+        <h1 className="text-xl md:text-2xl font-bold text-ink-900">◉ 職缺分析</h1>
         <p className="mt-1 text-sm text-ink-500">薪資行情 · 產業趨勢 · 公司分析</p>
       </div>
 
@@ -756,7 +756,7 @@ export default function CareerIntelligencePage() {
               {trackerJobId && (
                 <div className="flex items-center gap-3 rounded-xl border border-sage-200 bg-sage-50 px-4 py-3">
                   <span className="text-sm text-sage-700">
-                    📋 來自 Application Tracker：<strong>{trackerCompany}</strong>
+                    📋 來自 求職追蹤：<strong>{trackerCompany}</strong>
                     {trackerTitle && ` — ${trackerTitle}`}
                   </span>
                   <button onClick={clearTrackerLink}
@@ -894,10 +894,10 @@ export default function CareerIntelligencePage() {
                 <div className="flex flex-col items-center justify-center py-10 text-center">
                   <p className="text-4xl mb-3">🏢</p>
                   <p className="text-sm text-ink-500">AI 提供薪資行情、產業趨勢、企業文化、面試情報、談薪建議</p>
-                  <p className="text-xs text-ink-400 mt-1">也可從 Application Tracker「面試準備」Tab 直接連動</p>
+                  <p className="text-xs text-ink-400 mt-1">也可從 求職追蹤「面試準備」Tab 直接連動</p>
                   <Link href="/jobs"
                     className="mt-3 text-sm text-terra-500 hover:text-terra-700 transition-colors">
-                    前往 Application Tracker →
+                    前往 求職追蹤 →
                   </Link>
                 </div>
               )}
