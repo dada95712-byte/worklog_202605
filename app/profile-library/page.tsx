@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { PageTooltip } from '@/components/onboarding/page-tooltip'
+import { CompanyInput, invalidateCompanyCache } from '@/components/ui/company-input'
 import {
   DndContext, closestCenter, PointerSensor,
   useSensor, useSensors, type DragEndEvent,
@@ -306,6 +307,7 @@ export default function ProfileLibraryPage() {
       })
       if (!res.ok) throw new Error('save failed')
       setSaveStatus('saved')
+      invalidateCompanyCache() // 工作經歷可能新增／改了公司名稱，讓共用清單重抓
     } catch {
       setSaveStatus('failed')
     }
@@ -728,7 +730,13 @@ export default function ProfileLibraryPage() {
         <div className="space-y-3 pr-1">
           <div>
             <label className={labelCls}>公司名稱（中文） *</label>
-            <input className={inputCls} placeholder="公司名稱" value={(md.company as string) ?? ''} onChange={e => set('company', e.target.value)} />
+            {/* 與工作日誌共用同一份公司清單，避免同一家公司在兩邊存成不同字串
+                （日誌的成就要能對應回這筆工作經歷，靠的就是名稱一致） */}
+            <CompanyInput
+              className={inputCls}
+              value={(md.company as string) ?? ''}
+              onChange={(v) => set('company', v)}
+            />
           </div>
           <div>
             <label className={labelCls}>公司英文名稱</label>

@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { PageTooltip } from '@/components/onboarding/page-tooltip'
 import { fmtDate } from '@/lib/utils'
 import { readJournalIdParam } from '@/lib/journal-link'
+import { CompanyInput, invalidateCompanyCache } from '@/components/ui/company-input'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -292,8 +293,6 @@ export default function WorkJournalPage() {
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null)
 
   // Company autocomplete
-  const [showCompanyDD, setShowCompanyDD] = useState(false)
-  const companyHistory = useMemo(() => [...new Set(entries.map((e) => e.company).filter(Boolean))], [entries])
 
   // Interview analysis (detail view)
   const [analyzing, setAnalyzing] = useState(false)
@@ -529,6 +528,7 @@ export default function WorkJournalPage() {
     const exists = entries.some((e) => e.id === toSave.id)
     const next = exists ? entries.map((e) => e.id === toSave.id ? toSave : e) : [toSave, ...entries]
     persist(next)
+    invalidateCompanyCache() // 這篇可能帶進新的公司名稱，讓下次輸入時的清單抓得到
     setView('main')
   }, [draft, tagInput, entries])
 
@@ -754,20 +754,12 @@ export default function WorkJournalPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <input type="date" value={draft.date} onChange={(e) => updateDraft('date', e.target.value)}
               className="rounded-xl border border-warm-300 bg-white px-3 py-2 text-sm text-ink-700 focus:border-terra-400 focus:outline-none" />
-            <div className="relative">
-              <input placeholder="公司名稱" value={draft.company}
-                onChange={(e) => { updateDraft('company', e.target.value); setShowCompanyDD(true) }}
-                onBlur={() => setTimeout(() => setShowCompanyDD(false), 150)}
-                className="w-full rounded-xl border border-warm-300 bg-white px-3 py-2 text-sm text-ink-700 placeholder:text-ink-400 focus:border-terra-400 focus:outline-none" />
-              {showCompanyDD && companyHistory.filter((c) => c.toLowerCase().includes(draft.company.toLowerCase())).length > 0 && (
-                <div className="absolute top-full left-0 right-0 z-10 mt-1 rounded-xl border border-warm-200 bg-white shadow-lg overflow-hidden">
-                  {companyHistory.filter((c) => c.toLowerCase().includes(draft.company.toLowerCase())).slice(0, 5).map((c) => (
-                    <button key={c} onClick={() => { updateDraft('company', c); setShowCompanyDD(false) }}
-                      className="block w-full px-3 py-2 text-left text-sm text-ink-700 hover:bg-cream-100 transition-colors">{c}</button>
-                  ))}
-                </div>
-              )}
-            </div>
+            {/* 公司名稱與個人檔案庫共用同一份清單，避免同一家公司在兩邊存成不同字串 */}
+            <CompanyInput
+              value={draft.company}
+              onChange={(v) => updateDraft('company', v)}
+              className="w-full rounded-xl border border-warm-300 bg-white px-3 py-2 text-sm text-ink-700 placeholder:text-ink-400 focus:border-terra-400 focus:outline-none"
+            />
           </div>
           <input placeholder="職位（選填）" value={draft.jobTitle ?? ''}
             onChange={(e) => updateDraft('jobTitle', e.target.value)}
