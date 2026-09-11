@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
+import { PageTooltip } from '@/components/onboarding/page-tooltip'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 
@@ -64,6 +65,7 @@ export default function CareerCoachPage() {
   return (
     <div className="p-4 pt-16 md:pt-8 md:p-8 h-[calc(100vh-64px)] md:h-screen flex flex-col gap-4 max-w-3xl mx-auto"
       style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
+      <PageTooltip pageKey="career_coach" />
       {/* Header */}
       <div className="flex items-center justify-between shrink-0">
         <div>

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
+import { PageTooltip } from '@/components/onboarding/page-tooltip'
 import {
   DndContext, closestCenter, PointerSensor,
   useSensor, useSensors, type DragEndEvent,
@@ -1023,6 +1024,8 @@ export default function ProfileLibraryPage() {
 
       {/* Main */}
       <div className="flex-1 min-w-0 px-4 md:px-8 pt-16 pb-28 md:py-6 space-y-5">
+
+        <PageTooltip pageKey="profile_library" />
 
         {/* Header */}
         <div className="flex items-start justify-between gap-4">

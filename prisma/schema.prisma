@@ -18,7 +18,12 @@ model User {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  onboardingCompleted Boolean @default(false)
+  // 引導流程收集到的偏好——原本只存在 localStorage，換裝置就重問一次，
+  // 且系統無法得知使用者到底完成引導沒有
+  onboardingCompleted  Boolean @default(false)
+  onboardingStatus     String? // active_search | passive | just_started | fresh_grad
+  onboardingGoal       String? // resume | jobs | interview | skills
+  onboardingTargetRole String?
 
   accounts        Account[]
   sessions        Session[]

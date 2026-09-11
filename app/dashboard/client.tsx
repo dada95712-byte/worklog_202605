@@ -357,47 +357,79 @@ export function DashboardClient({ name }: { name: string }) {
       if (rawDone) setDoneTaskIds(new Set(JSON.parse(rawDone)))
     } catch { /* ignore */ }
 
-    const completed = localStorage.getItem('onboarding_completed')
-    if (!completed) {
-      const legacy = readLegacyOnboarding()
-      if (legacy) {
-        localStorage.setItem('onboarding_completed', 'true')
-        localStorage.setItem('onboarding_status', legacy.status)
-        localStorage.setItem('onboarding_goal', legacy.goal)
-        if (legacy.targetRole) localStorage.setItem('onboarding_target_role', legacy.targetRole)
-        setOnbStatus(legacy.status)
-        setOnbGoal(legacy.goal)
-      } else {
-        setShowModal(true)
-      }
-    } else {
-      setOnbStatus(localStorage.getItem('onboarding_status'))
-      setOnbGoal(localStorage.getItem('onboarding_goal'))
-    }
+    // 引導狀態改以資料庫為準（換裝置不會被重問）。舊的 localStorage 狀態
+    // 或登入前在 /onboarding 填的偏好，首次載入時搬遷上去一次。
+    ;(async () => {
+      try {
+        const res = await fetch('/api/onboarding')
+        if (!res.ok) return
+        const remote = await res.json() as {
+          completed: boolean; status: string | null; goal: string | null; targetRole: string | null; nameZh: string | null
+        }
+        if (remote.nameZh) setLocalName(remote.nameZh)
+
+        if (remote.completed) {
+          setOnbStatus(remote.status)
+          setOnbGoal(remote.goal)
+          return
+        }
+
+        // 資料庫還沒有紀錄 → 找本機殘留的舊資料（舊版 key 或登入前填的 /onboarding）
+        const legacyStatus = localStorage.getItem('onboarding_status')
+        const legacyGoal   = localStorage.getItem('onboarding_goal')
+        const legacyDone   = localStorage.getItem('onboarding_completed')
+        const preLogin     = readLegacyOnboarding()
+
+        const status = legacyStatus ?? preLogin?.status ?? null
+        const goal   = legacyGoal ?? preLogin?.goal ?? null
+        const targetRole = localStorage.getItem('onboarding_target_role') ?? preLogin?.targetRole ?? null
+
+        if ((legacyDone && status && goal) || preLogin) {
+          setOnbStatus(status)
+          setOnbGoal(goal)
+          await fetch('/api/onboarding', {
+            method: 'PUT', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ completed: true, status, goal, targetRole }),
+          })
+        } else {
+          setShowModal(true)
+        }
+      } catch { /* 讀不到就維持現狀，不要卡住畫面 */ }
+    })()
   }, [todayKey])
 
+  // 引導收集到的資料一律送進資料庫；姓名會由後端寫進 profile_basic，
+  // 使用者不必在個人檔案庫再打一次
+  function persistOnboarding(payload: Record<string, unknown>) {
+    fetch('/api/onboarding', {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    }).catch(() => { /* 保留樂觀更新的畫面 */ })
+  }
+
   function handleOnboardingComplete(status: string, goal: string, nameZh?: string, targetRole?: string) {
-    localStorage.setItem('onboarding_completed', 'true')
-    localStorage.setItem('onboarding_status', status)
-    localStorage.setItem('onboarding_goal', goal)
-    if (targetRole) localStorage.setItem('onboarding_target_role', targetRole)
     if (nameZh) setLocalName(nameZh)
     setOnbStatus(status)
     setOnbGoal(goal)
     setShowModal(false)
+    persistOnboarding({ completed: true, status, goal, targetRole: targetRole ?? null, nameZh: nameZh ?? null })
   }
 
   function handleOnboardingSkip() {
-    localStorage.setItem('onboarding_completed', 'true')
     setShowModal(false)
+    persistOnboarding({ completed: true })
   }
 
   function openGuide() {
+    // 舊版殘留的 localStorage key 一併清掉，避免下次載入又被當成「本機有舊資料」搬遷回去
+    localStorage.removeItem('onboarding')
     localStorage.removeItem('onboarding_completed')
     localStorage.removeItem('onboarding_status')
     localStorage.removeItem('onboarding_goal')
+    localStorage.removeItem('onboarding_target_role')
     const keys = Object.keys(localStorage).filter(k => k.startsWith('tooltip_seen_'))
     keys.forEach(k => localStorage.removeItem(k))
+    persistOnboarding({ completed: false, status: null, goal: null, targetRole: null })
     setOnbStatus(null)
     setOnbGoal(null)
     setShowModal(true)
