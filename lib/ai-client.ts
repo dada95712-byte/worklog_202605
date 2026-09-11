@@ -73,7 +73,6 @@ async function complete(
   messages: OpenAI.Chat.ChatCompletionMessageParam[],
   maxRetries = 3
 ): Promise<string> {
-  let lastErr: unknown
   for (let attempt = 0; attempt < maxRetries; attempt++) {
     try {
       const res = await getClient().chat.completions.create({ model, messages })
@@ -90,7 +89,6 @@ async function complete(
         const waitMs = Math.pow(2, attempt) * 1000 + Math.random() * 500
         console.warn(`[AI] ${model} 429 rate limit，等待 ${Math.round(waitMs)}ms（第 ${attempt + 1}/${maxRetries} 次）`)
         await sleep(waitMs)
-        lastErr = err
         continue
       }
       // Non-429: rethrow immediately (no retry)

@@ -160,43 +160,6 @@ const CERT_SHORTCUTS = [
   { name: 'MOS', issuer: 'Microsoft' },
 ]
 
-const PRESETS: { id: string; label: string; sectionOrder: SectionId[]; summary: string; summaryType: string }[] = [
-  {
-    id: 'freshman',
-    label: '新鮮人',
-    sectionOrder: ['personal', 'summary', 'education', 'experience', 'skills', 'certifications', 'languages', 'conferences', 'activities'],
-    summary: '應屆畢業生，主修資訊管理，熱愛學習新技術，在校期間積極參與專題開發與社團活動，具備良好的團隊合作與溝通能力，期待在貴公司展開職涯第一步。',
-    summaryType: '個人摘要',
-  },
-  {
-    id: 'engineer',
-    label: '工程師',
-    sectionOrder: ['personal', 'summary', 'experience', 'skills', 'education', 'certifications', 'languages', 'conferences', 'activities'],
-    summary: '擁有 5 年以上軟體開發經驗，熟悉 TypeScript、React 與 Node.js，主導過多個大型系統架構重構專案，能獨立完成從需求分析到上線部署的全流程開發。',
-    summaryType: '個人摘要',
-  },
-  {
-    id: 'marketing',
-    label: '行銷',
-    sectionOrder: ['personal', 'summary', 'experience', 'skills', 'education', 'certifications', 'languages', 'activities', 'conferences'],
-    summary: '具備 3 年數位行銷實戰經驗，擅長社群媒體經營、SEO 優化與內容策略規劃，曾主導年度品牌活動使社群互動率提升 40%，熟悉 Google Analytics、Meta Ads 等工具。',
-    summaryType: '個人摘要',
-  },
-  {
-    id: 'manager',
-    label: '管理職',
-    sectionOrder: ['personal', 'summary', 'experience', 'education', 'skills', 'certifications', 'languages', 'conferences', 'activities'],
-    summary: '擁有 8 年以上管理經驗，曾帶領跨部門團隊完成複數重點專案，具備優秀的策略規劃、資源調配與利害關係人溝通能力，成功推動組織轉型並提升整體績效 25%。',
-    summaryType: '個人摘要',
-  },
-  {
-    id: 'career-change',
-    label: '轉職用',
-    sectionOrder: ['personal', 'summary', 'skills', 'experience', 'education', 'certifications', 'languages', 'conferences', 'activities'],
-    summary: '擁有豐富的跨領域經驗，正積極轉型至產品管理領域。具備使用者研究、資料分析與敏捷開發基礎知識，善用過去在業務與客戶端的實戰經驗，快速融入新環境並創造價值。',
-    summaryType: '求職目標',
-  },
-]
 
 // ── Utilities ─────────────────────────────────────────────────────────────────
 
@@ -705,18 +668,6 @@ export function ResumeEditor({ initialData, initialName, onSave, onBack, onScore
     if (over && active.id !== over.id) {
       upd('certifications', arrayMove(resume.certifications, resume.certifications.findIndex(c => c.id === active.id), resume.certifications.findIndex(c => c.id === over.id)))
     }
-  }
-
-  function applyPreset(presetId: string) {
-    const preset = PRESETS.find(p => p.id === presetId)
-    if (!preset) return
-    setResume(prev => ({
-      ...prev,
-      sectionOrder: preset.sectionOrder,
-      summary: prev.summary || preset.summary,
-      summaryType: preset.summaryType,
-    }))
-    setSaved(false)
   }
 
   function handlePhotoUpload(e: React.ChangeEvent<HTMLInputElement>) {

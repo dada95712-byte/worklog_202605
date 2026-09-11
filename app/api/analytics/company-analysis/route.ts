@@ -34,7 +34,6 @@ async function callWithSearch(
     }
     if (usePlugin) body.plugins = [{ id: 'web' }]
 
-    let lastErr: Error | undefined
     for (let attempt = 0; attempt < maxRetries; attempt++) {
       const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
         method: 'POST',
@@ -48,7 +47,6 @@ async function callWithSearch(
           : Math.pow(2, attempt) * 1000 + Math.random() * 500
         console.warn(`[CompanyAnalysis] 429，等待 ${Math.round(waitMs)}ms（第 ${attempt + 1}/${maxRetries} 次）`)
         await new Promise(r => setTimeout(r, waitMs))
-        lastErr = Object.assign(new Error('rate_limit: HTTP 429'), { status: 429 })
         continue
       }
       if (!res.ok) throw new Error(`HTTP ${res.status}`)

@@ -78,9 +78,6 @@ export function CommandPalette() {
     setQuery('')
   }
 
-  const navItems = filtered.filter((i) => NAV.some((n) => n.href === i.href && n.label === i.label))
-  const actionItems = filtered.filter((i) => ACTIONS.some((a) => a.href === i.href && a.label === i.label))
-
   return (
     <div
       className="cmd-overlay fixed inset-0 z-50 flex items-start justify-center pt-[15vh]"

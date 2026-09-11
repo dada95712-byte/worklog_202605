@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Textarea } from '@/components/ui/textarea'
@@ -52,18 +52,9 @@ const TABS = ['resume'] as const
 type Tab = typeof TABS[number]
 const TAB_LABELS: Record<Tab, string> = { resume: '◈ 履歷' }
 
-const RESUME_TEMPLATES = [
-  { id: 'freshman',     emoji: '🎓', label: '新鮮人', desc: '剛畢業，強調學習能力',    data: { name: '王小明', email: 'example@gmail.com',    phone: '0912-345-678', skills: ['Python', 'Microsoft Office', '數據分析', '快速學習', '英文溝通'],              experiences: [{ company: '某科技公司', title: '暑期實習生',     description: '協助開發內部工具，參與敏捷開發流程' }],                                                                        education: [{ school: '國立台灣大學', degree: '學士', major: '資訊管理學系', year: '2024' }], rawText: '' } },
-  { id: 'engineer',     emoji: '⚙️', label: '工程師', desc: '3–5 年，強調技術深度',    data: { name: '李工程', email: 'engineer@gmail.com',   phone: '0923-456-789', skills: ['React', 'TypeScript', 'Node.js', 'PostgreSQL', 'Docker'],                         experiences: [{ company: '某新創公司', title: '資深前端工程師', description: '主導前端架構重構，導入 React + TypeScript，開發效率提升 40%' }, { company: '某傳產公司', title: '軟體工程師', description: '維護 ERP 系統，開發客製化報表模組' }], education: [{ school: '國立成功大學', degree: '學士', major: '資訊工程學系', year: '2021' }], rawText: '' } },
-  { id: 'marketing',    emoji: '📢', label: '行銷',   desc: '數位行銷，數據驅動',      data: { name: '陳行銷', email: 'marketing@gmail.com',  phone: '0934-567-890', skills: ['Google Analytics', 'SEO/SEM', 'Meta Ads', '內容行銷', 'KOL 合作'],               experiences: [{ company: '某電商平台', title: '數位行銷專員',   description: '管理月預算 200 萬廣告投放，ROI 提升 35%' }],                                                                   education: [{ school: '輔仁大學',     degree: '學士', major: '廣告傳播學系',   year: '2022' }], rawText: '' } },
-  { id: 'management',   emoji: '👔', label: '管理職', desc: '帶領 5 人以上團隊',        data: { name: '張主管', email: 'manager@gmail.com',    phone: '0945-678-901', skills: ['團隊管理', '跨部門協作', 'OKR', '敏捷開發', '人才培育'],                           experiences: [{ company: '某科技集團', title: '產品開發主管',   description: '帶領 8 人團隊，管理 3 個產品線，年營收 2,000 萬' }],                                                              education: [{ school: '政治大學',     degree: '碩士', major: 'MBA',           year: '2019' }], rawText: '' } },
-  { id: 'career_change',emoji: '🔄', label: '轉職用', desc: '強調可轉移技能',          data: { name: '林轉職', email: 'change@gmail.com',     phone: '0956-789-012', skills: ['溝通協調', '問題分析', 'Excel 進階', '客戶服務', '自學能力'],                       experiences: [{ company: '某金融機構', title: '業務專員',       description: '管理 200+ 客戶，業績達成率 120%' }],                                                                            education: [{ school: '淡江大學',     degree: '學士', major: '財務金融學系', year: '2020' }],  rawText: '' } },
-]
-
 const EMPTY_RESUME: ParsedResume = { name: '', email: '', phone: '', skills: [], experiences: [], education: [], rawText: '' }
 
 function genId() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7) }
-function todayStr() { return new Date().toISOString().slice(0, 10) }
 function fmtDate(d: string) { try { return new Date(d).toLocaleDateString('zh-TW') } catch { return d } }
 function detectLang(text: string): 'zh' | 'en' { return /[一-鿿]/.test(text) ? 'zh' : 'en' }
 
@@ -85,16 +76,6 @@ export default function CareerProfilePage() {
 
   // Auto-save indicator
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle')
-  const saveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
-  const autoSave = useCallback((key: string, data: unknown) => {
-    setSaveStatus('saving')
-    clearTimeout(saveTimer.current)
-    saveTimer.current = setTimeout(() => {
-      try { localStorage.setItem(key, JSON.stringify(data)) } catch { /* quota */ }
-      setSaveStatus('saved')
-      setTimeout(() => setSaveStatus('idle'), 2000)
-    }, 1000)
-  }, [])
 
   // ── Resume state ──────────────────────────────────────────────────────────────
   const [resumeView, setResumeView] = useState<'list' | 'create' | 'edit'>('list')
@@ -103,17 +84,9 @@ export default function CareerProfilePage() {
   const [resumeName, setResumeName] = useState('')
   const [editedResume, setEditedResume] = useState<ParsedResume>(EMPTY_RESUME)
   const [resumeError, setResumeError] = useState('')
-  const [parsing, setParsing] = useState(false)
-  const [dragging, setDragging] = useState(false)
-  const fileRef = useRef<HTMLInputElement>(null)
 
   // Create-flow state
-  const [createMode, setCreateMode] = useState<'none' | 'upload' | 'linkedin' | 'template' | 'chooser' | 'loading'>('none')
-  const [selectedTemplateId, setSelectedTemplateId] = useState('')
-  const [linkedinUrl, setLinkedinUrl] = useState('')
-  const [linkedinText, setLinkedinText] = useState('')
-  const [linkedinStep, setLinkedinStep] = useState<1 | 2>(1)
-  const [linkedinParsing, setLinkedinParsing] = useState(false)
+  const [createMode, setCreateMode] = useState<'none' | 'loading'>('none')
   const [chooserOpt, setChooserOpt] = useState<'profile' | 'jd' | null>(null)
   const [resumeLang, setResumeLang] = useState<'zh' | 'en' | 'both'>('zh')
   const [jdText, setJdText] = useState('')
@@ -429,6 +402,7 @@ export default function CareerProfilePage() {
 
   function persistResumes(next: ResumeEntry[]) {
     setResumes(next)
+    setSaveStatus('saving')
     fetch('/api/resumes', {
       method: 'PUT', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ resumes: next }),
@@ -436,8 +410,10 @@ export default function CareerProfilePage() {
       if (res.ok) {
         const { resumes: fresh } = await res.json() as { resumes: ResumeEntry[] }
         setResumes(fresh)
-      }
-    }).catch(() => { /* keep optimistic local state on network failure */ })
+        setSaveStatus('saved')
+        setTimeout(() => setSaveStatus('idle'), 2000)
+      } else { setSaveStatus('idle') }
+    }).catch(() => { setSaveStatus('idle') /* keep optimistic local state */ })
   }
 
   function goToEditor(
@@ -486,42 +462,6 @@ export default function CareerProfilePage() {
 
   function setPrimaryResume(id: string) {
     persistResumes(resumes.map((r) => ({ ...r, isPrimary: r.id === id })))
-  }
-
-  async function handleFile(f: File) {
-    setResumeError(''); setParsing(true)
-    const form = new FormData(); form.append('file', f)
-    try {
-      const res = await fetch('/api/resume/parse', { method: 'POST', body: form })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error ?? '解析失敗')
-      setEditBanner(data.warning ?? '')
-      setReviewFields([])
-      goToEditor({ ...EMPTY_RESUME, ...data }, data.name || '上傳履歷', 'upload')
-    } catch (err) { setResumeError((err as Error).message) }
-    finally { setParsing(false) }
-  }
-
-  async function handleLinkedinImport() {
-    const text = linkedinText.trim(); if (!text) return
-    setLinkedinParsing(true); setResumeError('')
-    const form = new FormData()
-    form.append('file', new Blob([text], { type: 'text/plain' }), 'linkedin.txt')
-    try {
-      const res = await fetch('/api/resume/parse', { method: 'POST', body: form })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error ?? '解析失敗')
-      goToEditor({ ...EMPTY_RESUME, ...data }, data.name || 'LinkedIn 履歷', 'linkedin')
-      setLinkedinUrl(''); setLinkedinText(''); setLinkedinStep(1)
-    } catch (err) { setResumeError((err as Error).message) }
-    finally { setLinkedinParsing(false) }
-  }
-
-  function applyTemplate() {
-    const t = RESUME_TEMPLATES.find((x) => x.id === selectedTemplateId)
-    if (!t) return
-    goToEditor({ ...EMPTY_RESUME, ...t.data }, `${t.emoji} ${t.label}`, 'template')
-    setSelectedTemplateId('')
   }
 
   // ── Render ────────────────────────────────────────────────────────────────────

@@ -110,8 +110,6 @@ cp .env.example .env.local
 | `GOOGLE_CLIENT_ID` | Google OAuth | [Google Cloud Console](https://console.cloud.google.com) |
 | `GOOGLE_CLIENT_SECRET` | Google OAuth | 同上 |
 | `BLOB_READ_WRITE_TOKEN` | 圖片／附件儲存 | [Vercel Blob](https://vercel.com/docs/storage/vercel-blob)（本機未設定時自動降級為 base64） |
-| `SERPER_API_KEY` | 職缺搜尋／公司分析網路搜尋 | [Serper.dev](https://serper.dev) |
-| `JSEARCH_API_KEY` | 職缺搜尋 API | [RapidAPI JSearch](https://rapidapi.com/letscrape-6bfed1765d1a6/api/jsearch) |
 
 > `OPENROUTER_API_KEY`、`NEXTAUTH_SECRET`、`DATABASE_URL` 皆為必填；
 > 缺 `DATABASE_URL` 會導致所有模組無法儲存。
@@ -134,7 +132,7 @@ npm run dev
 
 ```
 app/
-  api/              44 支 API 路由；除登入本身外，43 支全部經 requireAuth() 驗證
+  api/              37 支 API 路由；除登入本身外，36 支全部經 requireAuth() 驗證
   (各模組頁面)/      profile-library, work-journal, skill-map,
                     resume-lab, interviews, career-coach, jobs, analytics
 components/

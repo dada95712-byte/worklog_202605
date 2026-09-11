@@ -4,7 +4,6 @@ import { useState, useEffect, useRef, useMemo } from 'react'
 import Link from 'next/link'
 import { PageTooltip } from '@/components/onboarding/page-tooltip'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
 import { ProgressRing } from '@/components/ui/progress-ring'
 import { RateLimitToast } from '@/components/ui/rate-limit-toast'
 
@@ -356,7 +355,6 @@ export default function ApplicationTrackerPage() {
   const [addingNote, setAddingNote] = useState(false)
 
   // Match score analysis
-  const [analyzingMatch, setAnalyzingMatch] = useState(false)
   const [bgAnalyzing, setBgAnalyzing] = useState(false)
   const [profileSkills, setProfileSkills] = useState<string[]>([])
   const [linkedResume, setLinkedResume] = useState<{ id: string; name: string; score: number | null; createdAt: string } | null>(null)

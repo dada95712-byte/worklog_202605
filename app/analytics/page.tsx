@@ -175,12 +175,12 @@ function NullContent({ links }: { links: { label: string; url: string }[] }) {
 function CompanyReportView({
   trackerSalary, trackerSalaryLoading,
   deepReport, deepReportLoading, deepReportError,
-  trackerTitle, trackerIndustry, trackerCompany,
+  trackerTitle, trackerIndustry,
   fmt, onRetry, onCompetitorClick,
 }: {
   trackerSalary: SalaryData | null; trackerSalaryLoading: boolean
   deepReport: DeepReport | null; deepReportLoading: boolean; deepReportError: string
-  trackerTitle: string; trackerIndustry: string; trackerCompany: string
+  trackerTitle: string; trackerIndustry: string
   fmt: (n: number) => string
   onRetry: () => void
   onCompetitorClick: (c: string) => void
@@ -736,7 +736,6 @@ export default function CareerIntelligencePage() {
                 deepReportError=""
                 trackerTitle={viewingRecord.title}
                 trackerIndustry={viewingRecord.industry}
-                trackerCompany={viewingRecord.company}
                 fmt={fmt}
                 onRetry={() => {}}
                 onCompetitorClick={(c) => {
@@ -815,7 +814,6 @@ export default function CareerIntelligencePage() {
                 deepReportError={deepReportError}
                 trackerTitle={trackerTitle}
                 trackerIndustry={trackerIndustry}
-                trackerCompany={trackerCompany}
                 fmt={fmt}
                 onRetry={() => fetchDeepReport(trackerCompany, trackerTitle, '')}
                 onCompetitorClick={(c) => {

@@ -112,12 +112,6 @@ const JOURNAL_KEY = 'career-journal'
 
 function genId() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7) }
 function todayStr() { return new Date().toISOString().slice(0, 10) }
-function relativeTime(iso: string) {
-  const mins = Math.floor((Date.now() - new Date(iso).getTime()) / 60000)
-  if (mins < 60) return `${Math.max(0,mins)} 分鐘前`
-  if (mins < 1440) return `${Math.floor(mins/60)} 小時前`
-  return `${Math.floor(mins/1440)} 天前`
-}
 function monthLabel(iso: string) {
   const d = new Date(iso); return `${d.getFullYear()}年 ${d.getMonth()+1}月`
 }

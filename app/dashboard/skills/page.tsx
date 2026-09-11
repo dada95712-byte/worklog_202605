@@ -193,7 +193,6 @@ export default function SkillsPage() {
   const [confirmingId, setConfirmingId] = useState<string | null>(null)
   const [rateLimitToast, setRateLimitToast] = useState(false)
   const [expandedJournalSkill, setExpandedJournalSkill] = useState<string | null>(null)
-  const [totalJournals, setTotalJournals] = useState(0)
   const [journalEntriesMap, setJournalEntriesMap] = useState<Record<string, string>>({})
 
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -241,7 +240,6 @@ export default function SkillsPage() {
     fetch('/api/work-journal').then((r) => (r.ok ? r.json() : null)).then((res) => {
       if (!res) return
       const es = res.entries as { id: string; title: string }[]
-      setTotalJournals(es.length)
       const map: Record<string, string> = {}
       es.forEach((e) => { map[e.id] = e.title })
       setJournalEntriesMap(map)
