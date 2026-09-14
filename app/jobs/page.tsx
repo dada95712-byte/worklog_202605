@@ -701,7 +701,7 @@ export default function ApplicationTrackerPage() {
           {(['url', 'paste', 'manual'] as const).map((t) => (
             <button key={t} type="button" onClick={() => setAddTab(t)}
               className={`flex-1 rounded-lg px-3 py-1.5 text-sm font-medium transition-all duration-150 ${addTab === t ? 'bg-cream-200 text-ink-900 shadow-sm' : 'text-ink-500 hover:text-ink-600'}`}>
-              {t === 'url' ? '🔗 貼上連結（最快）' : t === 'paste' ? '📋 貼上 JD' : '✏️ 手動填寫'}
+              {t === 'url' ? '🔗 貼上連結（最快）' : t === 'paste' ? '📋 貼上 JD' : '✏️ 確認與編輯'}
             </button>
           ))}
         </div>
