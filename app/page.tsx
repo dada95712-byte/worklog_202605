@@ -13,7 +13,7 @@ const LAYERS = [
   },
   {
     layer: '轉換',
-    desc: '需要求職時，履歷與面試素材直接從你的累積生成，不必從零開始回想。',
+    desc: '需要求職時，履歷、面試素材與職涯建議都從你的累積長出來，不必從零開始回想。',
     color: 'bg-sage-50 border-sage-100',
     items: [
       { emoji: '📄', title: '履歷',     href: '/resume-lab',   sub: 'AI 解析履歷 · ATS 評分 · 關鍵字優化' },
